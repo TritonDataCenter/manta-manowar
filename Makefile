@@ -87,10 +87,11 @@ release: all docs $(SMF_MANIFESTS)
 	@mkdir -p $(TMPDIR)/root/opt/smartdc/$(NAME)/etc
 	cp -r   $(ROOT)/bin \
 		$(ROOT)/build \
-		$(ROOT)/index.js \
 		$(ROOT)/lib \
 		$(ROOT)/node_modules \
 		$(ROOT)/package.json \
+		$(ROOT)/server.js \
+		$(ROOT)/static \
 		$(TMPDIR)/root/opt/smartdc/$(NAME)
 	#We remove build/prebuilt-* because those symlinks will cause tar
 	# to complain when re-taring as a bundle once deployed, MANTA-495
