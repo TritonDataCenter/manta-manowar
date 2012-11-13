@@ -1,0 +1,395 @@
+<html>
+  <head>
+    <title>Graph Tester</title>
+
+    <link type="text/css" rel="stylesheet" href="css/detail.css">
+    <link type="text/css" rel="stylesheet" href="css/extensions.css">
+    <link type="text/css" rel="stylesheet" href="css/graph.css">
+    <link type="text/css" rel="stylesheet" href="css/legend.css">
+
+    <script src="js/d3.v2.js"></script>
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
+    <script src="js/jquery.sortable.js"></script>
+    <script src="js/rickshaw.js"></script>
+
+    <script type="text/javascript">
+      var width = document.innerWidth - 100;
+
+      function addGraph() {
+              //Make it a graph
+              var width = document.innerWidth - 100;
+              var palette = new Rickshaw.Color.Palette();
+              var graph = new Rickshaw.Graph({
+                      element: document.querySelector('#' + id),
+                      width: width,
+                      height: 85,
+                      renderer: 'line',
+                      series: [{
+                              //[ { x: 0, y: 40 }, { x: 1, y: 49 }, { x: 2, y: 38 }, { x: 3, y: 30 }, { x: 4, y: 32 } ],
+                              data: getRandomData(20),
+                              color: palette.color()
+                      }]
+              });
+              graph.palette = palette;
+              graph.render();
+      }
+
+      function addLines() {
+              for (var i in graphs) {
+                      var graph = graphs[i];
+                      var length = graph.series[0].data.length;
+                      var newSeries = {
+                              data: getRandomData(length),
+                              color: graph.palette.color()
+                      }
+                      graph.series.push(newSeries);
+                      graph.render();
+              }
+      }
+
+      function addPoints() {
+              for (var i in graphs) {
+                      var graph = graphs[i];
+                      for (var j = 0; j < graph.series.length; ++j) {
+                              var data = graph.series[j].data;
+                              data.push(getRandomPair(data.length));
+                      }
+                      graph.render();
+              }
+      }
+    </script>
+  </head>
+  <body>
+
+    <!-- Basic Graph -->
+    Basic Graph (Good):<br>
+    <div id="basic"/>
+    <script type="text/javascript">
+      function basic() {
+              var palette = new Rickshaw.Color.Palette();
+              var graph = new Rickshaw.Graph({
+                      element: document.querySelector('#basic'),
+                      height: 100,
+                      renderer: 'line',
+                      series: [{
+                              data: [ { x: 0, y: 40 }, { x: 1, y: 49 }, { x: 2, y: 38 }, { x: 3, y: 30 }, { x: 4, y: 32 } ],
+                              color: palette.color()
+                      }]
+              });
+              graph.palette = palette;
+              graph.render();
+      }
+      basic();
+    </script>
+    </div>
+
+    <!-- Handles string keys? -->
+    Strings in datapoints (Bad):<br>
+    <div id="stringkeys"/>
+    <!-- Thows an error...
+    <script type="text/javascript">
+      function stringkeys() {
+              var palette = new Rickshaw.Color.Palette();
+              var graph = new Rickshaw.Graph({
+                      element: document.querySelector('#stringkeys'),
+                      height: 100,
+                      renderer: 'line',
+                      series: [{
+                              data: [ { x: "zero", y: 40 }, { x: "one", y: 49 }, { x: "two", y: 38 }, { x: "three", y: 30 }, { x: "four", y: 32 } ],
+                              color: palette.color()
+                      }]
+              });
+              graph.palette = palette;
+              graph.render();
+      }
+      stringkeys();
+    </script>
+    -->
+    </div>
+
+    <!-- Handles missing points with multiple lines? -->
+    Missing points with multiple lines (Good):<br>
+    <div id="missingpointsmultiline">
+    <script type="text/javascript">
+      function missingpointsmultiline() {
+              var palette = new Rickshaw.Color.Palette();
+              var graph = new Rickshaw.Graph({
+                      element: document.querySelector('#missingpointsmultiline'),
+                      height: 100,
+                      renderer: 'line',
+                      series: [{
+                              data: [ { x: 0, y: 40 }, { x: 2, y: 49 }, { x: 4, y: 38 }, { x: 6, y: 30 }, { x: 20, y: 32 } ],
+                              color: palette.color()
+                      /* Graphs cannot have a different *number* of points... that's odd...
+                      },{
+                              data: [ { x: 1, y: 30 }, { x: 2, y: 21 } ],
+                              color: palette.color()
+                      */
+                      },{
+                              data: [ { x: 4, y: 40 }, { x: 5, y: 49 }, { x: 12, y: 38 }, { x: 13, y: 30 }, { x: 14, y: 32 } ],
+                              color: palette.color()
+                      }]
+              });
+              graph.palette = palette;
+              graph.render();
+
+              var xAxis = new Rickshaw.Graph.Axis.Time({
+                      graph: graph
+              });
+
+              xAxis.render();
+      }
+      missingpointsmultiline();
+    </script>
+    </div>
+
+    <!-- Points out of order? -->
+    Points out of order (Bad):<br>
+    <div id="pointsoutoforder">
+    <script type="text/javascript">
+      function pointsoutoforder() {
+              var palette = new Rickshaw.Color.Palette();
+              var graph = new Rickshaw.Graph({
+                      element: document.querySelector('#pointsoutoforder'),
+                      height: 100,
+                      renderer: 'line',
+                      series: [{
+                              data: [ { x: 0, y: 40 }, { x: 3, y: 50 }, { x: 1, y: 50 }, { x: 2, y: 40 }, { x: 5, y: 40 } ],
+                              color: palette.color()
+                      }]
+              });
+              graph.palette = palette;
+              graph.render();
+
+              var xAxis = new Rickshaw.Graph.Axis.Time({
+                      graph: graph
+              });
+
+              xAxis.render();
+      }
+      pointsoutoforder();
+    </script>
+    </div>
+
+    <!-- Handles min and max? -->
+    Min and Max (Good):<br>
+    <div id="minmax"/>
+    <script type="text/javascript">
+      function minmax() {
+              var palette = new Rickshaw.Color.Palette();
+              var graph = new Rickshaw.Graph({
+                      element: document.querySelector('#minmax'),
+                      height: 200,
+                      renderer: 'line',
+                      min: -100,
+                      max: 100,
+                      series: [{
+                              data: [ { x: 0, y: 40 }, { x: 1, y: 49 }, { x: 2, y: 38 }, { x: 3, y: 30 }, { x: 4, y: 32 } ],
+                              color: palette.color()
+                      }]
+              });
+              graph.palette = palette;
+              graph.render();
+
+              var yaxis = new Rickshaw.Graph.Axis.Y({
+                      graph: graph,
+                      tickFormat: Rickshaw.Fixtures.Number.formatKMBT
+              });
+              yaxis.render();
+
+      }
+      minmax();
+    </script>
+    </div>
+
+    <!-- Handles time? -->
+    Arbitrary times (Good):<br>
+    <div id="arbitrarytimes">
+    <script type="text/javascript">
+      function arbitrarytimes() {
+              var palette = new Rickshaw.Color.Palette();
+              //Pretending that each tick is 5 minutes, starting at
+              // 2012-05-10 22:00:00
+              var d = (new Date('2012-05-10T22:00:00Z').getTime()) / 1000;
+              var f = 60 * 5;
+              var graph = new Rickshaw.Graph({
+                      element: document.querySelector('#arbitrarytimes'),
+                      height: 100,
+                      renderer: 'line',
+                      series: [{
+                              data: [ { x: d, y: 40 },
+                                      { x: d + (60 * 5), y: 49 },
+                                      { x: d + (60 * 10), y: 38 },
+                                      { x: d + (60 * 15), y: 30 },
+                                      { x: d + (60 * 20), y: 32 },
+                                      { x: d + (60 * 25), y: 30 },
+                                      { x: d + (60 * 30), y: 50 },
+                                      { x: d + (60 * 35), y: 42 },
+                                      { x: d + (60 * 40), y: 41 },
+                                      { x: d + (60 * 45), y: 30 },
+                                      { x: d + (60 * 50), y: 32 },
+                                      { x: d + (60 * 55), y: 30 }
+                                    ],
+                              color: palette.color(),
+                              name: 'avg'
+                      }]
+              });
+              graph.palette = palette;
+              graph.render();
+
+              var axis = new Rickshaw.Graph.Axis.Time({
+                      graph: graph
+              });
+
+              var hoverDetail = new Rickshaw.Graph.HoverDetail({
+                      graph: graph
+              });
+
+              axis.render();
+      }
+      arbitrarytimes();
+    </script>
+    </div>
+
+    <!-- Handles time? -->
+    Local time (Kinda... on hover detail, but not on axis):<br>
+    <div id="localtimedisplay">
+    <script type="text/javascript">
+      function localtimedisplay() {
+              var palette = new Rickshaw.Color.Palette();
+              //Pretending that each tick is 5 minutes, starting at
+              // 2012-05-10 22:00:00
+              var d = (new Date('2012-05-10T22:00:00Z').getTime()) / 1000;
+              var f = 60 * 5;
+              var graph = new Rickshaw.Graph({
+                      element: document.querySelector('#localtimedisplay'),
+                      height: 100,
+                      renderer: 'line',
+                      series: [{
+                              data: [ { x: d, y: 40 },
+                                      { x: d + (60 * 5), y: 49 },
+                                      { x: d + (60 * 10), y: 38 },
+                                      { x: d + (60 * 15), y: 30 },
+                                      { x: d + (60 * 20), y: 32 },
+                                      { x: d + (60 * 25), y: 30 },
+                                      { x: d + (60 * 30), y: 50 },
+                                      { x: d + (60 * 35), y: 42 },
+                                      { x: d + (60 * 40), y: 41 },
+                                      { x: d + (60 * 45), y: 30 },
+                                      { x: d + (60 * 50), y: 32 },
+                                      { x: d + (60 * 55), y: 30 }
+                                    ],
+                              color: palette.color(),
+                              name: 'avg'
+                      }]
+              });
+              graph.palette = palette;
+              graph.render();
+
+              var axis = new Rickshaw.Graph.Axis.Time({
+                      graph: graph
+              });
+
+              var hoverDetail = new Rickshaw.Graph.HoverDetail({
+                      graph: graph,
+                      xFormatter: function (x) {
+                              return (new Date(x * 1000)).toString();
+                      }
+              });
+
+              axis.render();
+      }
+      localtimedisplay();
+    </script>
+    </div>
+
+    <!-- Handles Left and right? -->
+    Left and right, yaxis (Nope):<br>
+    <div id="leftandright">
+    </div>
+    <script type="text/javascript">
+      function leftandright() {
+              var palette = new Rickshaw.Color.Palette();
+              //Pretending that each tick is 5 minutes, starting at
+              // 2012-05-10 22:00:00
+              var d = (new Date('2012-05-10T22:00:00Z').getTime()) / 1000;
+              var f = 60 * 5;
+              var graph = new Rickshaw.Graph({
+                      element: document.querySelector('#leftandright'),
+                      height: 100,
+                      renderer: 'line',
+                      series: [{
+                              data: [ { x: d, y: 40 },
+                                      { x: d + (60 * 5), y: 49 },
+                                      { x: d + (60 * 10), y: 38 },
+                                      { x: d + (60 * 15), y: 30 },
+                                      { x: d + (60 * 20), y: 32 },
+                                      { x: d + (60 * 25), y: 30 },
+                                      { x: d + (60 * 30), y: 50 },
+                                      { x: d + (60 * 35), y: 42 },
+                                      { x: d + (60 * 40), y: 41 },
+                                      { x: d + (60 * 45), y: 30 },
+                                      { x: d + (60 * 50), y: 32 },
+                                      { x: d + (60 * 55), y: 30 }
+                                    ],
+                              color: palette.color(),
+                              name: 'avg'
+                      },{
+                              data: [ { x: d, y: 62 },
+                                      { x: d + (60 * 5), y: 67 },
+                                      { x: d + (60 * 10), y: 54 },
+                                      { x: d + (60 * 15), y: 55 },
+                                      { x: d + (60 * 20), y: 47 },
+                                      { x: d + (60 * 25), y: 51 },
+                                      { x: d + (60 * 30), y: 76 },
+                                      { x: d + (60 * 35), y: 60 },
+                                      { x: d + (60 * 40), y: 55 },
+                                      { x: d + (60 * 45), y: 59 },
+                                      { x: d + (60 * 50), y: 51 },
+                                      { x: d + (60 * 55), y: 58 }
+                                    ],
+                              color: palette.color(),
+                              name: 'tp90'
+                      },{
+                              data: [ { x: d, y: 6200 },
+                                      { x: d + (60 * 5), y: 6723 },
+                                      { x: d + (60 * 10), y: 5455 },
+                                      { x: d + (60 * 15), y: 5562 },
+                                      { x: d + (60 * 20), y: 4701 },
+                                      { x: d + (60 * 25), y: 5137 },
+                                      { x: d + (60 * 30), y: 7644 },
+                                      { x: d + (60 * 35), y: 6052 },
+                                      { x: d + (60 * 40), y: 5566 },
+                                      { x: d + (60 * 45), y: 5990 },
+                                      { x: d + (60 * 50), y: 5102 },
+                                      { x: d + (60 * 55), y: 5893 }
+                                    ],
+                              color: palette.color(),
+                              name: 'n'
+                      }]
+              });
+              graph.palette = palette;
+              graph.render();
+
+              var axis = new Rickshaw.Graph.Axis.Time({
+                      graph: graph
+              });
+
+              var yaxis = new Rickshaw.Graph.Axis.Y({
+                      graph: graph,
+                      tickFormat: Rickshaw.Fixtures.Number.formatKMBT
+              });
+              yaxis.render();
+
+              var hoverDetail = new Rickshaw.Graph.HoverDetail({
+                      graph: graph
+              });
+
+              axis.render();
+      }
+      leftandright();
+    </script>
+    </div>
+
+  </body>
+</html>
