@@ -1,34 +1,27 @@
-# Joyent Engineering Guide
+# Man O' War
 
-Repository: <git@git.joyent.com:eng.git>
-Browsing: <https://mo.joyent.com/eng>
-Who: Trent Mick, Dave Pacheco
-Docs: <https://mo.joyent.com/docs/eng>
-Tickets/bugs: <https://devhub.joyent.com/jira/browse/TOOLS>
+Repository: <git@git.joyent.com:manowar.git>
+Browsing: <https://mo.joyent.com/manowar>
+Who: Nate Fitch
+Docs: <https://mo.joyent.com/docs/manowar>
+Tickets/bugs: <https://devhub.joyent.com/jira/browse/MANTA>
 
 
 # Overview
 
-This repo serves two purposes: (1) It defines the guidelines and best
-practices for Joyent engineering work (this is the primary goal), and (2) it
-also provides boilerplate for an SDC project repo, giving you a starting
-point for many of the suggestion practices defined in the guidelines. This is
-especially true for node.js-based REST API projects.
-
-Start with the guidelines: <https://mo.joyent.com/docs/eng>
-
+Man O' War is the ops dashboard repository.  It contains the server for
+presigning URLs, the code to run as Marlin jobs to crunch logs and the webapp
+for dashboards.  See docs/index.restdown for more information.
 
 # Repository
 
-    deps/           Git submodules and/or commited 3rd-party deps should go
+    deps/           Git submodules and/or committed 3rd-party deps should go
                     here. See "node_modules/" for node.js deps.
     docs/           Project docs (restdown)
     lib/            Source files.
     node_modules/   Node.js deps, either populated at build time or commited.
                     See Managing Dependencies.
     pkg/            Package lifecycle scripts
-    smf/manifests   SMF manifests
-    smf/methods     SMF method scripts
     test/           Test suite (using node-tap)
     tools/          Miscellaneous dev/upgrade/deployment tools and data.
     Makefile
@@ -37,6 +30,8 @@ Start with the guidelines: <https://mo.joyent.com/docs/eng>
 
 
 # Development
+
+TODO: Update me.
 
 To run the boilerplate API server:
 
@@ -49,7 +44,7 @@ To run the boilerplate API server:
 To update the guidelines, edit "docs/index.restdown" and run `make docs`
 to update "docs/index.html".
 
-Before commiting/pushing run `make prepush` and, if possible, get a code
+Before committing/pushing run `make prepush` and, if possible, get a code
 review.
 
 
@@ -57,9 +52,6 @@ review.
 # Testing
 
     make test
-
-If you project has setup steps necessary for testing, then describe those
-here.
 
 
 # Starting a Repo Based on eng.git
