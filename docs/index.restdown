@@ -1,0 +1,120 @@
+---
+title: Man O' War
+markdown2extras: wiki-tables, code-friendly
+apisections:
+---
+
+# Man O' War
+
+A.K.A. the Portuguese man o' war is a siphonophore (colonial organism) that
+resembles a jellyfish.  The tentacles cause painful stings for humans and are
+used to stun prey.
+
+# Introduction
+
+Man O' War is the framework for generating and displaying dashboards of graphs
+for fun, profit, and operational goodness!  This repository contains several
+component:
+
+1. Code and marlin job definitions for processing logs.
+2. Browser app for displaying dashboards.
+3. Server for serving up ^^ and for generating presigned URLs.
+
+# Design
+
+Man O' War requires services to generate logs in the common restify "audit"
+format.  A sample request from Muskie:
+
+<code>
+{
+  "name": "audit",
+  "hostname": "c8aa9a6d-d4dc-47ed-b19a-46572dda7299",
+  "pid": 55838,
+  "audit": true,
+  "level": 30,
+  "remoteAddress": "10.99.99.198",
+  "remotePort": 50760,
+  "req": {
+    "method": "GET",
+    "url": "/nate/stor/a.txt",
+    "headers": {
+      "accept": "application/x-json-stream",
+      "date": "Tue, 13 Nov 2012 00:52:36 GMT",
+      "x-request-id": "5ffc525e-532f-4024-86b8-33ffa4b5fe7f",
+      "authorization": "Signature ...",
+      "user-agent": "restify/1.0 (ia32-solaris; v8/3.11.10.19; OpenSSL/1.0.0f) node/0.8.8",
+      "accept-version": "~1.0",
+      "host": "10.99.99.198",
+      "connection": "keep-alive",
+      "x-forwarded-for": "10.99.99.254"
+    },
+    "httpVersion": "1.1",
+    "trailers": {},
+    "owner": "ec9b0b88-0118-11e2-a85b-0ff8adc7a466"
+  },
+  "res": {
+    "statusCode": 200,
+    "headers": {
+      "last-modified": "Tue, 13 Nov 2012 00:41:24 GMT",
+      "content-type": "application/x-json-stream; type=directory",
+      "trailer": "x-stream-error",
+      "date": "Tue, 13 Nov 2012 00:52:36 GMT",
+      "server": "Manta",
+      "x-request-id": "5ffc525e-532f-4024-86b8-33ffa4b5fe7f",
+      "x-response-time": 6,
+      "x-server-name": "c8aa9a6d-d4dc-47ed-b19a-46572dda7299"
+    },
+    "trailer": "x-stream-error: false\r\n"
+  },
+  "err": false,
+  "latency": 6,
+  "_audit": true,
+  "msg": "handled: 200",
+  "time": "2012-11-13T00:52:36.994Z",
+  "v": 0
+}
+</code>
+
+These logs are uploaded to manta under:
+
+    /poseidon/stor/logs/[service]/[year]/[month]/[day]/[server].log.bz2
+
+Crons kicked off from the cron zone will find logs and set off marlin jobs to
+aggregate/transform them over 5 minute periods.  The results of the
+transformations are uploaded to:
+
+    /poseidon/stor/graph_data/[service]/[year]/[month]/[day]/[hour]/5min
+
+Other aggregations could be produced and put in appropriate locations.  Each of
+these aggregate files are in the format:
+
+<code>
+{
+  'service': muskie,
+  'period': '5min',
+  'start': 1234567890,
+  'metrics': {
+    'latency': {
+      'avg': [ { x: 1234567890, y: 5 }, ... ]
+      'n': [ ... ],
+      ...
+    },
+    'statusCode.200': {
+      'avg': [ ... ],
+      'n': [ ... ],
+      ...
+    },
+    ...
+  }
+}
+</code>
+
+Each `metrics` block contains blocks of stats that can be plotted.  These files
+are directly consumed by the dashboarding webapp.  Since we don't currently have
+a mechanism for getting transient credentials directly from a browser (a la OAuth
+or similar), the webapp first fetches a presigned url from the Man O' War server
+running in the ops zone, then makes a CORS request using that presigned URL to
+fetch the data.  It then uses the data to construct a graph.
+
+# See Also
+* [MANTA-507](https://devhub.joyent.com/jira/browse/MANTA-507): Jira item.
