@@ -1,0 +1,58 @@
+#features {
+  font-size: 0.9em;
+}
+.connected, .sortable, .exclude, .handles {
+#  margin: auto;
+  padding: 0;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -khtml-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+.sortable.grid {
+  overflow: hidden;
+}
+.connected li, .sortable li, .exclude li, .handles li {
+  list-style: none;
+  border: 1px solid #CCC;
+  color: #1C94C4;
+  margin: 5px;
+  padding: 5px;
+#  height: 22px;
+#  width: 1500px;
+}
+.handles span {
+  cursor: move;
+}
+li.disabled {
+  opacity: 0.5;
+}
+li.highlight {
+  background: #FEE25F;
+}
+li.sortable-placeholder {
+  border: 1px dashed #CCC;
+  background: none;
+  height: 150px
+}
+
+#Taken from view-source:http://code.shutterstock.com/rickshaw/examples/formatter.html
+.rickshaw_graph .detail .x_label {
+  display: none
+}
+.rickshaw_graph .detail .item {
+  line-height: 1.4;
+  padding: 0.5em
+}
+.detail_swatch {
+  float: right;
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin: 0 4px 0 0
+}
+.rickshaw_graph .detail .date {
+  color: #a0a0a0
+}

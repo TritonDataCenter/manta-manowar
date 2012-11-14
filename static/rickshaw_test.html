@@ -8,7 +8,7 @@
     <link type="text/css" rel="stylesheet" href="css/legend.css">
 
     <script src="js/d3.v2.js"></script>
-    <script src="//ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
+    <script src="js/jquery-1.8.2.js"></script>
     <script src="js/jquery.sortable.js"></script>
     <script src="js/rickshaw.js"></script>
 
@@ -196,11 +196,57 @@
                       tickFormat: Rickshaw.Fixtures.Number.formatKMBT
               });
               yaxis.render();
-
       }
       minmax();
     </script>
     </div>
+
+    <!-- Updating points -->
+    Updating points (Good):<br>
+    <div id="updatepoints"/>
+    <script type="text/javascript">
+      var UPDATE_POINTS_GRAPH = null;
+      function updatepoints() {
+              var palette = new Rickshaw.Color.Palette();
+              var graph = new Rickshaw.Graph({
+                      element: document.querySelector('#updatepoints'),
+                      height: 200,
+                      max: 100,
+                      renderer: 'line',
+                      series: [{
+                              data: [ { x: 0, y: 0 }, { x: 1, y: 0 },
+                                      { x: 2, y: 0 }, { x: 3, y: 0 },
+                                      { x: 4, y: 0 }, { x: 5, y: 0 } ],
+                              color: palette.color()
+                      }]
+              });
+              graph.palette = palette;
+              graph.render();
+              UPDATE_POINTS_GRAPH = graph;
+
+              var xAxis = new Rickshaw.Graph.Axis.Time({
+                      graph: graph
+              });
+              xAxis.render();
+
+              var yaxis = new Rickshaw.Graph.Axis.Y({
+                      graph: graph
+              });
+              yaxis.render();
+      }
+      updatepoints();
+
+      function updatepoints_() {
+              var length = UPDATE_POINTS_GRAPH.series[0].data.length;
+              for (var i = 0; i < length; ++i) {
+                      var random = Math.floor(Math.random() * 100);
+                      UPDATE_POINTS_GRAPH.series[0].data[i].y = random;
+              }
+              UPDATE_POINTS_GRAPH.render();
+      }
+    </script>
+    </div>
+    <input type="button" onclick="updatepoints_()" value="Update Points"><br>
 
     <!-- Handles time? -->
     Arbitrary times (Good):<br>
