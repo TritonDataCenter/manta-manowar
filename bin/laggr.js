@@ -4,6 +4,7 @@
 
 var carrier = require('carrier');
 var getopt = require('posix-getopt');
+var lib = require('../lib');
 var path = require('path');
 
 
@@ -95,99 +96,6 @@ function ifError(err, msg) {
 }
 
 
-function getField(field, obj) {
-        //TODO: Follow dots...
-        return ({
-                name: field,
-                value: obj[field]
-        });
-}
-
-
-function getBucket(period, time) {
-        var date = new Date(time);
-        var t = date.getTime() / 1000;
-        return (t - (t % period));
-}
-
-
-var agg = function () {
-        var n = 0;
-        var sum = 0;
-        var values = [];
-
-        return ({
-                apply: function (i) {
-                        ++n;
-                        sum += i;
-                        values.push(i);
-                },
-                report: function () {
-                        var avg = (n === 0) ? 0 : Math.floor(sum / n);
-                        return ({
-                                n: n,
-                                sum: sum,
-                                avg: avg
-                        });
-                }
-        });
-};
-
-
-//TODO: Make this work with the -f res.statusCode:latency format.
-var aggBucket = function (timeField, field, period) {
-        var minPeriod = null;
-        var maxPeriod = null;
-        var buckets = {};
-
-        return ({
-                apply: function (obj) {
-                        var time = getField(timeField, obj).value;
-                        var value = getField(field, obj).value + 0;
-                        if (!time || !value) {
-                                return;
-                        }
-                        var bucket = getBucket(period, time);
-                        if (!buckets[bucket]) {
-                                if (minPeriod === null || minPeriod > bucket) {
-                                        minPeriod = bucket;
-                                }
-                                if (maxPeriod === null || maxPeriod < bucket) {
-                                        maxPeriod = bucket;
-                                }
-                                buckets[bucket] = agg();
-                        }
-                        buckets[bucket].apply(value);
-                },
-                report: function (start, end) {
-                        start = start || minPeriod;
-                        end = end || maxPeriod;
-
-                        var ret = {
-                                n: [],
-                                sum: [],
-                                avg: []
-                        };
-
-                        var zeroBucket = agg();
-                        if (!start || !end || start > end) {
-                                return (null);
-                        }
-                        for (var i = start; i <= end; i += period) {
-                                var bucket = buckets[i] || zeroBucket;
-                                var report = bucket.report();
-                                for (var key in ret) {
-                                        ret[key].push(report[key]);
-                                }
-                        }
-                        return (ret);
-                },
-                minPeriod: function () { return (minPeriod); },
-                maxPeriod: function () { return (maxPeriod); }
-        });
-};
-
-
 
 ///--- Main
 
@@ -199,7 +107,11 @@ var _line = 0;
 var _buckets = {};
 for (var _n in _opts.fields) {
         var _field = _opts.fields[_n];
-        _buckets[_field] = aggBucket(_opts.time, _field, _opts.period);
+        _buckets[_field] = lib.createAggBucket({
+                timeField: _opts.time,
+                field: _field,
+                period: _opts.period
+        });
 }
 
 _c.on('line', function (line) {
@@ -210,8 +122,8 @@ _c.on('line', function (line) {
         } catch (err) {
                 ifError(err);
         }
-        for (var bucket in _buckets) {
-                _buckets[bucket].apply(obj);
+        for (var b in _buckets) {
+                _buckets[b].apply(obj);
         }
 });
 
@@ -226,10 +138,10 @@ _c.on('end', function () {
         for (b in _buckets) {
                 var bucket = _buckets[b];
                 if (start === null || bucket.minPeriod < start) {
-                        start = bucket.minPeriod();
+                        start = bucket.minPeriod;
                 }
                 if (end === null || bucket.maxPeriod > end) {
-                        end = bucket.maxPeriod();
+                        end = bucket.maxPeriod;
                 }
         }
         //Move start and end to the nearest hour boundaries
