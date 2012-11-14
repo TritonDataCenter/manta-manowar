@@ -152,7 +152,10 @@ _c.on('end', function () {
         res.end = new Date(end * 1000);
 
         for (b in _buckets) {
-                res.metrics[b] = _buckets[b].report(start, end);
+                var report = _buckets[b].report(start, end);
+                for (var rep in report) {
+                        res.metrics[rep] = report[rep];
+                }
         }
 
         console.log(JSON.stringify(res));

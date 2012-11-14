@@ -99,5 +99,56 @@ test('test: path field', function (t) {
 
 
 test('test: multi bucket', function (t) {
+        var period = 5;
+        var field = 'res.code:latency';
+        var field200 = 'res.code.200:latency';
+        var field500 = 'res.code.500:latency';
+        var ab = lib.createAggBucket({
+                timeField: 't',
+                field: field,
+                period: period
+        });
+        var n = lastDateAtPeriod(period);
+
+        //Period 1
+        ab.apply({ t: d(n, 2), latency: 2, res: { code: '200' } });
+        ab.apply({ t: d(n, 3), latency: 10, res: { code: '500' } });
+        ab.apply({ t: d(n, 4), latency: 4, res: { code: '200' } });
+
+        //Period 2
+        ab.apply({ t: d(n, 5), latency: 11, res: { code: '500' } });
+        ab.apply({ t: d(n, 6), latency: 3, res: { code: '200' } });
+        ab.apply({ t: d(n, 7), latency: 5, res: { code: '200' } });
+        ab.apply({ t: d(n, 8), latency: 4, res: { code: '200' } });
+        ab.apply({ t: d(n, 9), latency: 13, res: { code: '500' } });
+
+        //Report should only contain one thing: report
+        var report = ab.report();
+
+        t.ok(report[field200] != undefined);
+        t.ok(report[field500] != undefined);
+        t.equal(2, Object.keys(report).length);
+
+        var rep200 = report[field200];
+        t.ok(rep200 != undefined);
+        t.equal(2, rep200.n.length);
+        t.equal(2, rep200.avg.length);
+        t.equal(2, rep200.sum.length);
+        t.deepEqual(rep200.n, [ 2, 3 ]);
+        t.deepEqual(rep200.sum, [ 6, 12 ]);
+        t.deepEqual(rep200.avg, [ 3, 4 ]);
+
+        var rep500 = report[field500];
+        t.ok(rep500 != undefined);
+        t.equal(2, rep500.n.length);
+        t.equal(2, rep500.avg.length);
+        t.equal(2, rep500.sum.length);
+        t.deepEqual(rep500.n, [ 1, 2 ]);
+        t.deepEqual(rep500.sum, [ 10, 24 ]);
+        t.deepEqual(rep500.avg, [ 10, 12 ]);
+
+        t.equal(n.getTime() / 1000, ab.minPeriod);
+        t.equal((n.getTime() / 1000) + period, ab.maxPeriod);
+
         t.end();
 });

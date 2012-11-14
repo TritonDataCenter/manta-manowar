@@ -55,7 +55,7 @@ review.
 
 You can also run laggr.js directly on some of the logs in data/ like so:
 
-    bzcat data/logs/muskie/2012/11/13/01/c8aa9a6d.log.bz2 | grep -v '/ping' | grep '^{"name":"audit"' | ./bin/laggr.js -p 60 -t time -f latency -f pid
+    bzcat data/logs/muskie/2012/11/13/01/c8aa9a6d.log.bz2 | grep -v '/ping' | grep '^{"name":"audit"' | ./bin/laggr.js -p 60 -t time -f latency -f res.statusCode:latency
 
 # Starting a Repo Based on eng.git
 
