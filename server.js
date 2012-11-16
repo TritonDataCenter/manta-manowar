@@ -4,6 +4,7 @@ var bunyan = require('bunyan');
 var express = require('express');
 var fs = require('fs');
 var manta = require('manta');
+var url = require('url');
 var util = require('util');
 
 
@@ -12,7 +13,7 @@ var util = require('util');
 
 var DEFAULT_PORT = 8080;
 var LOG = bunyan.createLogger({
-        level: (process.env.LOG_LEVEL || 'info'),
+        level: (process.env.LOG_LEVEL || 'debug'),
         name: 'manowar',
         stream: process.stdout
 });
@@ -24,6 +25,7 @@ var MANTA_CONFIG = JSON.parse(fs.readFileSync(MANTA_CONFIG_FILE, 'utf8'));
 var MANTA_KEY = fs.readFileSync(MANTA_CONFIG.manta.sign.key, 'utf8');
 var MANTA_KEY_ID = MANTA_CONFIG.manta.sign.keyId;
 var MANTA_URL = MANTA_CONFIG.manta.url;
+var MANTA_HOST = MANTA_URL.replace(/^http.?:\/\//, '');
 var MANTA_USER = MANTA_CONFIG.manta.user;
 var ALGORITHM = / DSA /.test(MANTA_KEY) ? 'DSA-SHA1' : 'RSA-SHA256';
 var SIGN = manta.privateKeySigner({
@@ -33,7 +35,7 @@ var SIGN = manta.privateKeySigner({
         user: MANTA_USER
 });
 
-var EXPIRES = 300; //5 minutes
+var EXPIRES_SECONDS = 300; //5 minutes
 var VALID_PATH_PREFIXES = [
         '/graph_data/'
 ];
@@ -42,15 +44,18 @@ var VALID_PATH_PREFIXES = [
 
 //--- Helpers
 
-function getSignedUrl(path, cb) {
+function getSignedUrl(host, path, cb) {
+        var expires = (new Date()).getTime() + (EXPIRES_SECONDS * 1000);
         var opts = {
                 algorithm: ALGORITHM,
-                expires: EXPIRES,
+                expires: expires,
                 keyId: MANTA_KEY_ID,
                 user: MANTA_USER,
+                host: host,
                 method: 'GET',
                 path: path,
-                sign: SIGN
+                sign: SIGN,
+                log: LOG
         };
 
         manta.signUrl(opts, cb);
@@ -66,8 +71,19 @@ var app = express();
 
 //Route first to the ajaxy part
 app.get('/sign/*', function (req, res) {
-        var urlParts = req.url.split('/');
-        LOG.info({ url: req.url }, 'Processing url.');
+        var urlObj = url.parse(req.url, true);
+        var urlPath = urlObj.pathname;
+
+        //Hostname that the client is using to connect to manta can be sent
+        // in a query parameter.
+        var query = urlObj.query;
+        var host = query.host || MANTA_HOST;
+
+        var urlParts = urlPath.split('/');
+        LOG.info({ url: req.url, parts: urlParts, query: query },
+                 'Processing url.');
+
+        //console.log(util.inspect(req));
 
         //Check user and path
         var sentUser = urlParts[2];
@@ -97,12 +113,13 @@ app.get('/sign/*', function (req, res) {
         var fullPath = '/' + urlParts.slice(2).join('/');
 
         //Sign what they want and return.
-        getSignedUrl(fullPath, function (err, resource) {
+        getSignedUrl(host, fullPath, function (err, resource) {
                 if (err) {
                         res.send(500, err);
                         return;
                 }
-                res.send(MANTA_URL + resource);
+                var mantaUrl = 'https://' + host + resource;
+                res.send(mantaUrl);
         });
 });
 

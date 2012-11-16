@@ -55,17 +55,19 @@ review.
 
 You can also run laggr.js directly on some of the logs in data/ like so:
 
-    bzcat data/logs/muskie/2012/11/13/01/c8aa9a6d.log.bz2 | grep -v '/ping' | grep '^{"name":"audit"' | ./bin/laggr.js -p 60 -t time -f latency -f res.statusCode:latency
+    bzcat data/logs/muskie/2012/11/13/01/c8aa9a6d.log.bz2 | grep '^{' | bunyan -o json-0 -c 'this.audit === true' | ./bin/laggr.js -p 60 -t time -f latency -f res.statusCode:latency
 
-# Starting a Repo Based on eng.git
+If you set up your MANTA_* environment variables and have node-manta on your
+path, you can upload the data under the "data" directory by running:
 
-Create a new repo called "some-cool-fish" in your "~/work" dir based on "eng.git":
-Note: run this inside the eng dir.
+    ./bin/upload_test_data.sh
 
-    ./tools/mkrepo $HOME/work/some-cool-fish
+Then if you're running the server you can run this to verify that the signing
+portion of the server works:
 
+    curl http://localhost:8080/sign/poseidon/stor/graph_data/muskie/2012/11/13/01/60.data | xargs -i curl -v -k "{}"
 
-# Your Other Sections Here
+If you're running on coal and you need to have a request signed for a different
+host, you can pass a host query parameter:
 
-Add other sections to your README as necessary. E.g. Running a demo, adding
-development data.
+    curl http://localhost:8080/sign/poseidon/stor/graph_data/muskie/2012/11/13/01/60.data?host=$(coal_manta_ip.sh) | xargs -i curl -v -k "{}"
