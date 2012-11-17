@@ -518,6 +518,28 @@
                       source: autocompletePath
               });
       });
+
+      //Since the autocomplete thing is 'magic' and sometimes doesn't enable
+      // the graphit button we're doing this hacky thing...
+      $(function () {
+              function testEnableGraphItButton() {
+                      var timeout = 1000;
+                      var val = document.querySelector('#path_chooser').value;
+                      var path = val.split('/');
+                      if (path.length !== 8) {
+                              disableGraphIt();
+                              setTimeout(timeout, testEnableGraphItButton);
+                      } else {
+                              getData({ path: path }, function (err, data) {
+                                      if (!err && data) {
+                                              enableGraphIt();
+                                      } else {
+                                              disableGraphIt();
+                                      }
+                              });
+                      }
+              }
+      });
     </script>
   </head>
   <body>
