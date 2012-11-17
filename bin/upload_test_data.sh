@@ -13,7 +13,7 @@ for file in `find data/logs -type f`; do
         ./bin/laggr.js -p 60 -t time -f latency -f res.statusCode:latency \
         >$TMP_FILE
 
-    mmkdir -p $DIR
+    mmkdir -H 'Access-Control-Allow-Origin: *' -p $DIR
     mput -H 'Access-Control-Allow-Origin: *' -f $TMP_FILE $MANTA_OBJECT
 done
 

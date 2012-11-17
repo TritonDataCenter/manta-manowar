@@ -1,0 +1,185 @@
+<html>
+  <head>
+    <title>Graph Prototype</title>
+
+    <link type="text/css" rel="stylesheet" href="css/detail.css">
+    <link type="text/css" rel="stylesheet" href="css/extensions.css">
+    <link type="text/css" rel="stylesheet" href="css/graph.css">
+    <link type="text/css" rel="stylesheet" href="css/legend.css">
+    <link type="text/css" rel="stylesheet" href="css/manowar.css">
+
+    <script src="js/d3.v2.js"></script>
+    <script src="js/jquery-1.8.2.js"></script>
+    <script src="js/jquery.sortable.js"></script>
+    <script src="js/rickshaw.js"></script>
+
+    <script type="text/javascript">
+      var graphs = [];
+      var graphNum = 0;
+      var running = false;
+      var period = 1000;
+
+      function getRandomPair (x) {
+              return { x: x, y: Math.floor(Math.random() * 41) };
+      }
+
+      //Generates and returns [ { x: 0, y: RANDOM_NUM }, ... ],
+      function getRandomData (n) {
+              var data = [];
+              for (var i = 0; i < n; ++i) {
+                      data.push(getRandomPair(i));
+              }
+              return data;
+      }
+
+      function addGraph() {
+              //Create an new div and append to content...
+              var gid = 'graph' + graphNum;
+              var lid = 'legend' + graphNum;
+
+              var gdiv = '<table border=0><tr><td width="100%">' +
+                      '<div id="' + gid + '"></div>' +
+                      '</td><td>' +
+                      '<div id="' + lid + '"></div>' +
+                      '</td></tr></table>';
+
+              var newli = document.createElement('li');
+              newli.draggable = true;
+              newli.innerHTML = gdiv;
+              //newli.style.width = '1600px';
+              document.querySelector('#content').appendChild(newli);
+
+              //Make it a graph
+              var palette = new Rickshaw.Color.Palette();
+              var graph = new Rickshaw.Graph({
+                      element: document.querySelector('#' + gid),
+                      //So if we let rickshaw do its thing the graph will fill
+                      // the container it's in.
+                      //width: $(document).width() - 100,
+                      height: 150, //Default seems to be 250
+                      renderer: 'line',
+                      series: [{
+                              name: 'foo',
+                              data: getRandomData(20),
+                              color: palette.color(),
+                              units: 'msec'
+                      }]
+              });
+              graph.render();
+              graph.palette = palette;
+              graphs.push(graph);
+              graphNum++;
+
+              var yAxis = new Rickshaw.Graph.Axis.Y({
+                      graph: graph
+              });
+              yAxis.render();
+
+              var xAxis = new Rickshaw.Graph.Axis.Time({
+                      graph: graph
+              });
+              xAxis.render();
+
+              var hoverDetail = new Rickshaw.Graph.HoverDetail({
+                      graph: graph,
+                      xFormatter: function (x) {
+                              return (new Date(x * 1000)).toString();
+                      },
+                      formatter: function(series, x, y) {
+                              var swatch = '<span class="detail_swatch" style="background-color: ' + series.color + '"></span>';
+                              var date = '<span class="date">' + new Date(x * 1000).toString() + '</span>';
+                              var content = swatch + series.name + ": " + parseInt(y, 10) + '&nbsp;' + series.units + '<br>' + date;
+                              return content;
+                      }
+              });
+
+              graph.legendid = lid;
+
+              giveGraphLegend(graph);
+
+              makeDraggable();
+      }
+
+      function giveGraphLegend(graph) {
+              //Need to clear it out or else funky stuff happens...
+              document.querySelector('#' + graph.legendid).innerHTML = '';
+
+              var legend = new Rickshaw.Graph.Legend( {
+                      graph: graph,
+                      element: document.getElementById(graph.legendid)
+              } );
+
+              var shelving = new Rickshaw.Graph.Behavior.Series.Toggle({
+                      graph: graph,
+                      legend: legend
+              });
+      }
+
+      function addLines() {
+              for (var i in graphs) {
+                      var graph = graphs[i];
+                      var length = graph.series[0].data.length;
+                      var newSeries = {
+                              name: 'foo',
+                              data: getRandomData(length),
+                              color: graph.palette.color(),
+                              units: 'msec'
+                      }
+                      graph.series.push(newSeries);
+                      graph.render();
+                      giveGraphLegend(graph);
+              }
+      }
+
+      function addPoints() {
+              for (var i in graphs) {
+                      var graph = graphs[i];
+                      for (var j = 0; j < graph.series.length; ++j) {
+                              var data = graph.series[j].data;
+                              data.push(getRandomPair(data.length));
+                      }
+                      graph.render();
+              }
+      }
+
+      function addPointsAndReschedule() {
+              if (running) {
+                      addPoints();
+                      setTimeout(addPointsAndReschedule, period);
+              }
+      }
+
+      function startStop() {
+              running = !running;
+              if (running) {
+                      setTimeout(addPointsAndReschedule, period);
+              }
+      }
+
+      function makeDraggable() {
+              //jquery I pulled from the sortable demo
+              $(function() {
+                      $('.sortable').sortable();
+                      $('.handles').sortable({
+                              handle: 'span'
+                      });
+                      $('.connected').sortable({
+                              connectWith: '.connected'
+                      });
+                      $('.exclude').sortable({
+                              items: ':not(.disabled)'
+                      });
+              });
+      }
+    </script>
+  </head>
+  <body>
+    <input type="button" value="Add Graph" onClick="addGraph()"/>
+    <input type="button" value="Add Line" onClick="addLines()"/>
+    <input type="button" value="Add Points" onClick="addPoints()"/>
+    <input type="button" value="Start/Stop" onClick="startStop()"/>
+    <hr>
+
+    <ul id="content" class="sortable list"></ul>
+  </body>
+</html>

@@ -6,31 +6,34 @@
     <link type="text/css" rel="stylesheet" href="css/extensions.css">
     <link type="text/css" rel="stylesheet" href="css/graph.css">
     <link type="text/css" rel="stylesheet" href="css/legend.css">
+    <link type="text/css" rel="stylesheet" href="css/jquery-ui.css">
     <link type="text/css" rel="stylesheet" href="css/manowar.css">
 
     <script src="js/d3.v2.js"></script>
     <script src="js/jquery-1.8.2.js"></script>
+    <script src="js/jquery-ui-1.9.1.js"></script>
     <script src="js/jquery.sortable.js"></script>
     <script src="js/rickshaw.js"></script>
 
     <script type="text/javascript">
       var graphs = [];
       var graphNum = 0;
-      var running = false;
-      var period = 1000;
+      var dataCache = null; //Gets populated on first populate call.
+      var mantaPrefix = '/poseidon/stor/graph_data/';
 
-      function getRandomPair (x) {
-              return { x: x, y: Math.floor(Math.random() * 41) };
+      //Muck with prototypes...
+      if (typeof String.prototype.startsWith != 'function') {
+              String.prototype.startsWith = function (str){
+                      return this.slice(0, str.length) === str;
+              };
       }
 
-      //Generates and returns [ { x: 0, y: RANDOM_NUM }, ... ],
-      function getRandomData (n) {
-              var data = [];
-              for (var i = 0; i < n; ++i) {
-                      data.push(getRandomPair(i));
-              }
-              return data;
+      if (typeof String.prototype.endsWith != 'function') {
+              String.prototype.endsWith = function(suffix) {
+                      return this.indexOf(suffix, this.length - suffix.length) !== -1;
+              };
       }
+      //Done mucking with prototypes.
 
       function addGraph() {
               //Create an new div and append to content...
@@ -131,31 +134,6 @@
               }
       }
 
-      function addPoints() {
-              for (var i in graphs) {
-                      var graph = graphs[i];
-                      for (var j = 0; j < graph.series.length; ++j) {
-                              var data = graph.series[j].data;
-                              data.push(getRandomPair(data.length));
-                      }
-                      graph.render();
-              }
-      }
-
-      function addPointsAndReschedule() {
-              if (running) {
-                      addPoints();
-                      setTimeout(addPointsAndReschedule, period);
-              }
-      }
-
-      function startStop() {
-              running = !running;
-              if (running) {
-                      setTimeout(addPointsAndReschedule, period);
-              }
-      }
-
       function makeDraggable() {
               //jquery I pulled from the sortable demo
               $(function() {
@@ -171,13 +149,277 @@
                       });
               });
       }
+
+      function getMantaData(path, cb) {
+              if (!path) {
+                      alert('getData called without a path');
+              }
+
+              //Host override
+              var host = document.querySelector('#manta_host').value;
+              if (host) {
+                      path += '?host=' + host;
+              }
+
+              var successDataGet = function (graphData, status) {
+                      cb(null, graphData);
+              }
+
+              var errorDataGet = function (xhr, err) {
+                      cb(err);
+              }
+
+              var successUrlGet = function (mantaUrl, status) {
+                      $.ajax({
+                              url: mantaUrl,
+                              dataType: 'text',
+                              success: successDataGet,
+                              error: errorDataGet
+                      });
+              }
+
+              var errorUrlGet = function (xhr, err) {
+                      cb(err);
+              }
+
+              //Get a presigned URL from manowar
+              $.ajax({
+                      url: '/sign' + path,
+                      dataType: 'text',
+                      success: successUrlGet,
+                      error: errorUrlGet
+              });
+      }
+
+      function listMantaDir(path, cb) {
+              getMantaData(path, function (err, data) {
+                      if (err) {
+                              cb(err);
+                              return;
+                      }
+                      if (!data) {
+                              cb(null, []);
+                              return;
+                      }
+                      var blobs = data.split('\n');
+                      var dirs = [];
+                      for (var i = 0; i < blobs.length; ++i) {
+                              if (blobs[i] === '') {
+                                      continue;
+                              }
+                              var dirObj = JSON.parse(blobs[i]);
+                              dirs.push(dirObj);
+                      }
+                      cb(null, dirs);
+              });
+      }
+
+      //Getting and storing information from Manta...
+      function getData(opts, cb) {
+              if (!opts.path) {
+                      return null;
+              }
+              var obj = getFromDataCache(opts.path);
+              if (obj) {
+                      cb(null, obj);
+              } else {
+                      getAndCache(opts, cb);
+              }
+      }
+
+      function getFromDataCache(path) {
+              if (path === null || dataCache === null) {
+                      return null;
+              }
+              var location = dataCache;
+              for (var i = 0; i < path.length; ++i) {
+                      if (!location[path[i]]) {
+                              return null;
+                      }
+                      location = location[path[i]];
+              }
+              return location;
+      }
+
+      //Recursively fetches data down a path, caching along the way.
+      function getAndCache(opts, cb) {
+              var path = opts.path;
+              var parent = opts.parent;
+              var current = opts.current;
+              var depth = opts.depth || 0;
+
+              //Files are located at:
+              // /poseidon/stor/graph_data/[service]/[year]/[month]/[day]/[hour]/[period].data
+              // So... parts array matches:0         1      2       3     4      5
+
+              //This will break if we put data in other places.  It should
+              //probably be smarter and see if the above directory is 'data'
+              if (!current && depth < 6) {
+                      var p = mantaPrefix + path.slice(0, depth).join('/');
+                      listMantaDir(p, function (err, dirs) {
+                              if (err) {
+                                      err.terminationDepth = depth;
+                                      cb(err);
+                                      return;
+                              }
+
+                              //To begin with, all is null
+                              var listingObject = {};
+                              for (var i = 0; i < dirs.length; ++i) {
+                                      var dirObj = dirs[i];
+                                      var n = dirObj.name;
+                                      if (dirObj.type === 'directory') {
+                                              listingObject[n] = null;
+                                      } else if (dirObj.type === 'object' &&
+                                                 n.endsWith('.data')) {
+                                              n = n.replace('.data', '');
+                                              listingObject[n] = null;
+                                      }
+                              }
+
+                              //Set up the parent with a reference to what
+                              // we just made...
+                              if (depth === 0) {
+                                      //Special case depth 0 (the cache)...
+                                      dataCache = listingObject;
+                                      parent = dataCache;
+                              } else {
+                                      parent[path[depth - 1]] = listingObject;
+                              }
+
+                              //Base cases...
+                              if (path.length === depth) {
+                                      cb(null, listingObject);
+                              } else if (path[depth] in listingObject) {
+                                      getAndCache({
+                                              path: path,
+                                              parent: listingObject,
+                                              current: listingObject[path[depth]],
+                                              depth: depth + 1
+                                      }, cb);
+                              } else {
+                                      cb({ terminationDepth: depth });
+                              }
+                      });
+              } else if (!current) {
+                      //Get the object from manta...
+                      var p = mantaPrefix + path.slice(0, depth).join('/') + '.data';
+                      getMantaData(p, function(err, data) {
+                              if (err) {
+                                      cb({ terminationDepth: depth });
+                                      return;
+                              }
+                              var dataObj = JSON.parse(data);
+                              //Join the data into the cache...
+                              parent[path[depth - 1]] = dataObj.metrics;
+
+                              //Now that we've populated all we can, just use
+                              // the "normal" method.  Ya, it walks the top again,
+                              // but who cares?
+                              var pathObject = getFromDataCache(path);
+                              if (pathObject === null) {
+                                      cb({ terminationDepth: depth });
+                                      return;
+                              }
+                              cb(null, pathObject);
+                      });
+              } else {
+                      getAndCache({
+                              path: path,
+                              parent: current,
+                              current: current[path[depth + 1]],
+                              depth: depth + 1
+                      }, cb);
+              }
+
+      }
+
+      function enableGraphIt() {
+              var graphButton = document.querySelector('#graph_it');
+              var selection = document.querySelector('#path_chooser').value;
+              var path = selection.split('/');
+
+              graphButton.disabled = true;
+
+              if (path.length === 8 && path[path.length - 1] !== '') {
+                      getData({ path: path }, function (err, o) {
+                              //If data is present, enable graphing
+                              if (o) {
+                                      graphButton.disabled = false;
+                              }
+                      });
+              }
+      }
+
+      function disableGraphIt() {
+              var graphButton = document.querySelector('#graph_it');
+              graphButton.style.background = null;
+              graphButton.disabled = true;
+      }
+
+      function enableGraphIt() {
+              var graphButton = document.querySelector('#graph_it');
+              graphButton.style.background = 'lightgreen';
+              graphButton.disabled = false;
+      }
+
+      //Autocomplete the path...
+      function autocompletePath(request, response) {
+              var term = request.term;
+              var parts = term.split('/');
+              var path = parts.slice(0, parts.length - 1);
+              var current = parts[parts.length - 1];
+              var pathPrefix = path.join('/');
+              var mpath = mantaPrefix + path.join('/');
+
+              disableGraphIt();
+
+              //TODO: If we ever have more granular data, this will break.
+              if (parts.length > 8) {
+                      response([]);
+              } else {
+                      getData({ path: path }, function (err, o) {
+                              if (err) {
+                                      return;
+                              }
+                              var list = [];
+                              var p = pathPrefix ? pathPrefix + '/' : '';
+                              for (var d in o) {
+                                      if (d.startsWith(current)) {
+                                              list.push(p + d);
+                                      }
+                              }
+                              response(list);
+
+                              if(parts.length === 8 && o[current]) {
+                                      enableGraphIt();
+                              }
+                      });
+              }
+      }
+
+      $(function () {
+              $('#path_chooser').autocomplete({
+                      minLength: 0,
+                      source: autocompletePath
+              });
+      });
     </script>
   </head>
   <body>
-    <input type="button" value="Add Graph" onClick="addGraph()"/>
-    <input type="button" value="Add Line" onClick="addLines()"/>
-    <input type="button" value="Add Points" onClick="addPoints()"/>
-    <input type="button" value="Start/Stop" onClick="startStop()"/>
+    <table width=100% border=0>
+      <tr>
+        <td align=left>Man O' War</td>
+        <td align=center>
+          Path: <input type=text id='path_chooser' name='path_chooser' size=200 value='muskie/2012/11/13/00/60/latency'>
+          <input type=button id='graph_it' value='Graph It!' disabled=true onclick='addLineFromPathChooser()'>
+        </td>
+        <td align=right>
+          Manta Host Override:
+          <input type=text id='manta_host' name='manta_host' value='10.99.99.121' size=15>
+        </td>
+      </tr>
+    </table>
     <hr>
 
     <ul id="content" class="sortable list"></ul>

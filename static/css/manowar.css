@@ -56,3 +56,8 @@ li.sortable-placeholder {
 .rickshaw_graph .detail .date {
   color: #a0a0a0
 }
+
+#Taken from http://jqueryui.com/autocomplete/#remote
+.ui-autocomplete-loading {
+  background: white url('images/ui-anim_basic_16x16.gif') right center no-repeat;
+}
