@@ -20,6 +20,7 @@
       var graphNum = 0;
       var dataCache = null; //Gets populated on first populate call.
       var mantaPrefix = '/poseidon/stor/graph_data/';
+      var selectedGraph = null;
 
       //Muck with prototypes...
       if (typeof String.prototype.startsWith != 'function') {
@@ -35,7 +36,130 @@
       }
       //Done mucking with prototypes.
 
-      function addGraph() {
+      function addLineFromPathChooser() {
+              var path = document.querySelector('#path_chooser').value;
+              var parts = path.split('/');
+              getData({ path: parts }, function (err, data) {
+                      if (err) {
+                              console.log('error graphing ' + path);
+                              return;
+                      }
+
+                      var obj = pathToObject(path);
+                      obj.data = data;
+
+                      var graph = getSelectedGraph();
+                      if (!graph) {
+                              //Add a new one...
+                              graph = newGraph(obj);
+                              selectedGraph = graph;
+                      }
+                      applyObjToGraph(obj, graph);
+                      graph.render();
+                      giveGraphLegend(graph);
+              });
+
+      }
+
+      function applyObjToGraph(obj, graph) {
+              if (graph.period !== obj.period) {
+                      alert('Graph period (' + graph.period + ') is not the ' +
+                            ' same as the data period (' + obj.period + ')');
+                      return;
+              }
+
+              //Determine if the obj is in range of the graph
+              var graphEnd = graph.startSeconds + (graph.periodSeconds *
+                                                   graph.numPoints);
+              var objEnd = obj.startSeconds + (obj.periodSeconds *
+                                               obj.data.length);
+
+              var within = (obj.startSeconds >= graph.startSeconds &&
+                            obj.startSeconds <= graphEnd) ||
+                      (objEnd >= graph.startSeconds &&
+                       objEnd <= graphEnd);
+              if (!within) {
+                      return;
+              }
+
+              if (!graph.seriesMap[obj.name]) {
+                      //Add a new line to the graph...
+                      var newSeries = zeroSeries(obj.name,
+                                                 graph.palette.color(),
+                                                 obj.units, graph.startSeconds,
+                                                 graph.periodSeconds,
+                                                 graph.numPoints);
+                      graph.series.push(newSeries);
+                      graph.seriesMap[obj.name] = newSeries;
+              }
+              var series = graph.seriesMap[obj.name];
+
+              var period = graph.periodSeconds;
+
+              //Finding the offsets into each list...
+              var oo = 0;
+              var go = 0;
+
+              if (obj.startSeconds < graph.startSeconds) {
+                      oo = (graph.startSeconds - obj.startSeconds) / period;
+              } else {
+                      go = (obj.startSeconds - graph.startSeconds) / period;
+              }
+
+              //Add the points to the graph...
+              while(go < graph.numPoints && oo < obj.data.length) {
+                      series.data[go].y = obj.data[oo];
+                      ++go;
+                      ++oo;
+              }
+      }
+
+      function getSelectedGraph() {
+              return selectedGraph;
+      }
+
+      //Takes a path and transforms it to a workable object.
+      function pathToObject(path) {
+              var parts = path.split('/');
+              if (parts.length !== 8) {
+                      console.error('Cannot change path to object: ' + path);
+                      return;
+              }
+              var obj = {};
+              // muskie/2012/11/13/00/60/latency/n
+              obj.service = parts[0];
+              obj.year = parts[1];
+              obj.month = parts[2];
+              obj.day = parts[3];
+              obj.hour = parts[4];
+              obj.periodSeconds = parts[5];
+              obj.stat = parts[7];
+              obj.units = obj.stat === 'n' ? 'requests' : 'msec';
+              obj.name = obj.service + '/' + parts.slice(6).join('/');
+              var dateString = obj.year + '-' + obj.month + '-' + obj.day +
+                      'T' + obj.hour + ':00:00.000Z';
+              var date = new Date(dateString);
+              obj.startSeconds = date.getTime() / 1000;
+              return obj;
+      }
+
+      function zeroSeries(name, color, units, start, period, numPoints) {
+              var points = [];
+              for (var i = 0; i < numPoints; ++i) {
+                      points.push({
+                              x: start + (period * i),
+                              y: 0
+                      });
+              }
+              return ({
+                      name: name,
+                      data: points,
+                      color: color,
+                      units: units
+              });
+      }
+
+      function newGraph(obj) {
               //Create an new div and append to content...
               var gid = 'graph' + graphNum;
               var lid = 'legend' + graphNum;
@@ -54,24 +178,29 @@
 
               //Make it a graph
               var palette = new Rickshaw.Color.Palette();
+              var series = zeroSeries(obj.name, palette.color(), obj.units,
+                                      obj.startSeconds, obj.periodSeconds,
+                                      obj.data.length);
+
               var graph = new Rickshaw.Graph({
                       element: document.querySelector('#' + gid),
-                      //So if we let rickshaw do its thing the graph will fill
-                      // the container it's in.
-                      //width: $(document).width() - 100,
                       height: 150, //Default seems to be 250
                       renderer: 'line',
-                      series: [{
-                              name: 'foo',
-                              data: getRandomData(20),
-                              color: palette.color(),
-                              units: 'msec'
-                      }]
+                      min: 0,
+                      series: [series]
               });
               graph.render();
+
+              //Here we add our own stuff to the graph so that we can
+              // introspect for adding more stuff later...
               graph.palette = palette;
               graphs.push(graph);
               graphNum++;
+              graph.startSeconds = series.data[0].x;
+              graph.periodSeconds = series.data[1].x - series.data[0].x;
+              graph.numPoints = series.data.length;
+              graph.seriesMap = {};
+              graph.seriesMap[obj.name] = series;
 
               var yAxis = new Rickshaw.Graph.Axis.Y({
                       graph: graph
@@ -101,6 +230,8 @@
               giveGraphLegend(graph);
 
               makeDraggable();
+
+              return graph;
       }
 
       function giveGraphLegend(graph) {
@@ -161,8 +292,8 @@
                       path += '?host=' + host;
               }
 
-              var successDataGet = function (graphData, status) {
-                      cb(null, graphData);
+              var successDataGet = function (data, status) {
+                      cb(null, data);
               }
 
               var errorDataGet = function (xhr, err) {
@@ -332,23 +463,6 @@
                       }, cb);
               }
 
-      }
-
-      function enableGraphIt() {
-              var graphButton = document.querySelector('#graph_it');
-              var selection = document.querySelector('#path_chooser').value;
-              var path = selection.split('/');
-
-              graphButton.disabled = true;
-
-              if (path.length === 8 && path[path.length - 1] !== '') {
-                      getData({ path: path }, function (err, o) {
-                              //If data is present, enable graphing
-                              if (o) {
-                                      graphButton.disabled = false;
-                              }
-                      });
-              }
       }
 
       function disableGraphIt() {
