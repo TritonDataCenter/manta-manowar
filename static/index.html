@@ -528,7 +528,7 @@
                       var path = val.split('/');
                       if (path.length !== 8) {
                               disableGraphIt();
-                              setTimeout(timeout, testEnableGraphItButton);
+                              setTimeout(testEnableGraphItButton, timeout);
                       } else {
                               getData({ path: path }, function (err, data) {
                                       if (!err && data) {
@@ -536,9 +536,12 @@
                                       } else {
                                               disableGraphIt();
                                       }
+                                      setTimeout(testEnableGraphItButton,
+                                                timeout);
                               });
                       }
               }
+              testEnableGraphItButton();
       });
     </script>
   </head>
