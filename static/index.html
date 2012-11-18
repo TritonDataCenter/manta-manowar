@@ -24,6 +24,7 @@
       var dataCache = null; //Gets populated on first populate call.
       var mantaPrefix = '/poseidon/stor/graph_data/';
       var selectedGraph = null;
+      var graphItButtonEnabled = false;
 
       //Muck with prototypes...
       if (typeof String.prototype.startsWith != 'function') {
@@ -247,20 +248,31 @@
               });
       }
 
+      function removeGraph(did) {
+              var content = document.querySelector('#content');
+              var graphdiv = document.querySelector('#' + did);
+              content.removeChild(graphdiv);
+      }
+
       function newGraph(obj) {
               //Create an new div and append to content...
+              var did = 'graph-div-' + graphNum;
               var gid = 'graph' + graphNum;
               var lid = 'legend' + graphNum;
+              graphNum++;
 
-              var gdiv = '<table border=0><tr><td width="100%">' +
+              var gdiv = '<table border=0><tr><td rowspan=2 width="100%">' +
                       '<div id="' + gid + '"></div>' +
-                      '</td><td>' +
+                      '</td><td valign=top>' +
+                      '<a href="#" class="redx" onclick=removeGraph("' + did + '")>x</a>' +
+                      '</td></tr><tr><td valign=top>' +
                       '<div id="' + lid + '"></div>' +
-                      '</td></tr></table>';
+                      '</td></tr</table>';
 
               var newli = document.createElement('li');
               newli.draggable = true;
               newli.innerHTML = gdiv;
+              newli.id = did;
               document.querySelector('#content').appendChild(newli);
 
               //Make it a graph
@@ -281,7 +293,6 @@
               // introspect for adding more stuff later...
               graph.palette = palette;
               graphs.push(graph);
-              graphNum++;
               graph.startSeconds = series.data[0].x;
               graph.periodSeconds = series.data[1].x - series.data[0].x;
               graph.numPoints = series.data.length;
@@ -543,18 +554,6 @@
 
       }
 
-      function disableGraphIt() {
-              var graphButton = document.querySelector('#graph_it');
-              graphButton.style.background = null;
-              graphButton.disabled = true;
-      }
-
-      function enableGraphIt() {
-              var graphButton = document.querySelector('#graph_it');
-              graphButton.style.background = 'lightgreen';
-              graphButton.disabled = false;
-      }
-
       //Autocomplete the path...
       function findLatestMetricsPath(opts, cb) {
               var service = opts.service;
@@ -706,6 +705,18 @@
               });
       });
 
+      function disableGraphIt() {
+              var graphButton = document.querySelector('#graph_it');
+              document.getElementById("graph_it").className = 'grey-graph-it';
+              graphItButtonEnabled = false;
+      }
+
+      function enableGraphIt() {
+              var graphButton = document.querySelector('#graph_it');
+              document.getElementById("graph_it").className = 'green-graph-it';
+              graphItButtonEnabled = true;
+      }
+
       //Since the autocomplete thing is 'magic' and sometimes doesn't enable
       // the graphit button we're doing this hacky thing instead...
       $(function () {
@@ -735,7 +746,7 @@
           Path: <input type=text id='path_chooser' name='path_chooser' size=100 value='muskie/latency/n'>
           Start: <input type=text id='start_date' size=17 value='11/13/2012 00:00'/>
           End: <input type=text id='end_date' size=17  value='11/13/2012 02:00'/>
-          <input type=button id='graph_it' value='Graph It!' disabled=true onclick='addLineFromPathChooser()'>
+          <a href='#' id='graph_it' class='green-graph-it' onclick='if (graphItButtonEnabled) { addLineFromPathChooser(); }'>Graph It!</a>
         </td>
         <td align=right>
           Manta Host Override:
