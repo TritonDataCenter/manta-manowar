@@ -64,20 +64,20 @@
               var path = document.querySelector('#path_chooser').value;
               var startDate = document.querySelector('#start_date').value;
               var endDate = document.querySelector('#end_date').value;
-              var parts = path.split('/');
+              var pathParts = path.split('/');
 
               //Turn start and end date into UTC...
               startDate = stringToUTCDate(startDate);
               endDate = stringToUTCDate(endDate);
 
-              if (parts.length != 3) {
+              if (pathParts.length != 3) {
                       alert('Sorry, I cant plot that path.');
                       return;
               }
 
-              var service = parts[0];
-              var metric = parts[1];
-              var stat = parts[2];
+              var service = pathParts[0];
+              var metric = pathParts[1];
+              var stat = pathParts[2];
               //TODO: Un hard-code this.
               var periodSeconds = 60;
               //Round the dates to the nearest periods to start fetching data...
@@ -112,38 +112,38 @@
               }
 
               //Data structure contention keeps us from doing this in parallel.
-              fetchPathsAndApplyToGraphSerially({
+              fetchPathsAndApplyToGraph({
                       paths: pathsToApply,
                       graph: graph
               });
       }
 
-      function fetchPathsAndApplyToGraphSerially(opts) {
+      function fetchPathAndApplyToGraphFunction(path, graph) {
+              return (function () {
+                      getData({ path: path }, function (err, data) {
+                              if (err) {
+                                      console.log('Failed fetching: ' +
+                                                  JSON.stringify(path));
+                                      return;
+                              }
+                              //TODO: This join is stupid.  Refactor.
+                              var obj = pathToObject(path);
+                              obj.data = data;
+
+                              applyObjToGraph(obj, graph);
+                      });
+              });
+      }
+
+      function fetchPathsAndApplyToGraph(opts) {
               var paths = opts.paths;
               var graph = opts.graph;
-              var depth = opts.depth || 0;
-              var path = paths[depth];
 
-              getData({ path: path }, function (err, data) {
-                      if (err) {
-                              console.log('Failed fetching: ' +
-                                          JSON.stringify(path));
-                              return;
-                      }
-                      //TODO: This join is stupid.  Refactor.
-                      var obj = pathToObject(path.join('/'));
-                      obj.data = data;
-
-                      applyObjToGraph(obj, graph);
-
-                      if (depth < paths.length) {
-                              fetchPathsAndApplyToGraphSerially({
-                                      paths: paths,
-                                      graph: graph,
-                                      depth: depth + 1
-                              });
-                      }
-              });
+              for (var i = 0; i < paths.length; ++i) {
+                      var path = paths[i];
+                      var f = fetchPathAndApplyToGraphFunction(path, graph);
+                      f();
+              }
       }
 
       function applyObjToGraph(obj, graph) {
@@ -209,22 +209,21 @@
 
       //Takes a path and transforms it to a workable object.
       function pathToObject(path) {
-              var parts = path.split('/');
-              if (parts.length !== 8) {
+              if (path.length !== 8) {
                       console.error('Cannot change path to object: ' + path);
                       return;
               }
               var obj = {};
               // muskie/2012/11/13/00/60/latency/n
-              obj.service = parts[0];
-              obj.year = parts[1];
-              obj.month = parts[2];
-              obj.day = parts[3];
-              obj.hour = parts[4];
-              obj.periodSeconds = parts[5];
+              obj.service = path[0];
+              obj.year = path[1];
+              obj.month = path[2];
+              obj.day = path[3];
+              obj.hour = path[4];
+              obj.periodSeconds = path[5];
               //TODO: Clever way to get units in here?
-              obj.units = parts[7];
-              obj.name = obj.service + '/' + parts.slice(6).join('/');
+              obj.units = path[7];
+              obj.name = obj.service + '/' + path.slice(6).join('/');
               var dateString = obj.year + '-' + obj.month + '-' + obj.day +
                       'T' + obj.hour + ':00:00.000Z';
               var date = new Date(dateString);
@@ -447,11 +446,6 @@
               var current = opts.current;
               var depth = opts.depth || 0;
 
-              //Race conditions in here if you try and fetch more than one
-              // thing at a time...
-              //alert('Getting path (' + depth + '): ' + JSON.stringify(path) +
-              //      ' => ' + JSON.stringify(dataCache));
-
               //Files are located at:
               // /poseidon/stor/graph_data/[service]/[year]/[month]/[day]/[hour]/[period].data
               // So... parts array matches:0         1      2       3     4      5
@@ -482,13 +476,24 @@
                               }
 
                               //Set up the parent with a reference to what
-                              // we just made...
+                              // we just made... though since there could be
+                              // multiple requests for the same object we need
+                              // to make sure some other object didn't populate
+                              // the object in our "absense"
                               if (depth === 0) {
                                       //Special case depth 0 (the cache)...
-                                      dataCache = listingObject;
+                                      if (!dataCache) {
+                                              dataCache = listingObject;
+                                      } else {
+                                              listingObject = dataCache;
+                                      }
                                       parent = dataCache;
                               } else {
-                                      parent[path[depth - 1]] = listingObject;
+                                      if (!parent[path[depth - 1]]) {
+                                              parent[path[depth - 1]] = listingObject;
+                                      } else {
+                                              listingObject = parent[path[depth - 1]];
+                                      }
                               }
 
                               //Base cases...
@@ -581,12 +586,12 @@
 
       function autocompletePath(request, response) {
               var term = request.term;
-              var parts = term.split('/');
-              var path = parts.slice(0, parts.length - 1);
-              var current = parts[parts.length - 1];
+              var pathParts = term.split('/');
+              var path = pathParts.slice(0, pathParts.length - 1);
+              var current = pathParts[pathParts.length - 1];
               var pathPrefix = path.join('/') + '/';
 
-              if (parts.length >= 4) {
+              if (pathParts.length >= 4) {
                       response([]);
                       return;
               }
@@ -599,7 +604,7 @@
               // So we list the services when there are no path separators,
               // for the others, we trace down the latest path, pull the latest
               // data we can find and display the metrics and stats available,
-              if (parts.length < 2) {
+              if (pathParts.length < 2) {
                       getData({ path: path }, function (err, services) {
                               if (err) {
                                       return;
@@ -614,8 +619,8 @@
                       });
               } else {
                       var processMetrics = function (err, obj) {
-                              var term = parts[1];
-                              var st = parts[2];
+                              var term = pathParts[1];
+                              var st = pathParts[2];
                               if (err) {
                                       console.log(err);
                                       response([]);
@@ -647,17 +652,19 @@
                               getData({ path: gotPath }, processMetrics);
                       }
 
-                      findLatestMetricsPath({ service: parts[0] }, processPath);
+                      findLatestMetricsPath({ service: pathParts[0] }, processPath);
               }
 
       }
 
       $(function () {
+              //Turn on autocompletion for the path
               $('#path_chooser').autocomplete({
                       minLength: 0,
                       source: autocompletePath
               });
 
+              //Date/time choosers
               var startDateTextBox = $('#start_date');
               var endDateTextBox = $('#end_date');
 
