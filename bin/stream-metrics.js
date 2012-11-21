@@ -18,7 +18,7 @@ var path = require('path');
  *
  * Once could compute statistics over the latency field for 60 second periods
  * with:
- *     ... | laggr.js -p 60 -t time -f latency
+ *     ... | stream-metrics.js -p 60 -t time -f latency
  *
  * Output is in the following format:
  *     {

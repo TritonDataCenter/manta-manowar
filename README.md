@@ -53,9 +53,9 @@ review.
 
     make test
 
-You can also run laggr.js directly on some of the logs in data/ like so:
+You can also run stream-metrics.js directly on some of the logs in data/ like so:
 
-    bzcat data/logs/muskie/2012/11/13/01/c8aa9a6d.log.bz2 | grep '^{' | bunyan -o json-0 -c 'this.audit === true' | ./bin/laggr.js -p 60 -t time -f latency -f res.statusCode:latency
+    bzcat data/logs/muskie/2012/11/13/01/c8aa9a6d.log.bz2 | grep '^{' | bunyan -o json-0 -c 'this.audit === true' | ./bin/stream-metrics.js -p 60 -t time -f latency -f res.statusCode:latency
 
 If you set up your MANTA_* environment variables and have node-manta on your
 path, you can upload the data under the "data" directory by running:

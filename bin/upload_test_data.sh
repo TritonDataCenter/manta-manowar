@@ -11,7 +11,7 @@ for file in `find data/logs -type f`; do
     echo $MANTA_OBJECT
 
     bzcat $file | grep '^{' | bunyan -o json-0 -c 'this.audit === true' | \
-        ./bin/laggr.js -p 60 -t time -f latency -f res.statusCode:latency \
+        ./bin/stream-metrics.js -p 60 -t time -f latency -f res.statusCode:latency \
         >$TMP_FILE
 
     mmkdir $ROOT_DIR
