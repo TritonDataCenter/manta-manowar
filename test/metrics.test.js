@@ -29,6 +29,7 @@ function outer() {
         });
 }
 
+
 function inner() {
         return ({
                 'period': 60,
@@ -43,6 +44,7 @@ function inner() {
                 'end': '2012-11-13T01:04:00.000Z'
         });
 }
+
 
 function all() {
         return ({
@@ -71,6 +73,7 @@ test('test: merge only one', function (t) {
         t.end();
 });
 
+
 test('test: simple merge', function (t) {
         var metrics = lib.createMetrics();
         metrics.merge(inner());
@@ -79,6 +82,7 @@ test('test: simple merge', function (t) {
         t.deepEqual(all(), rep);
         t.end();
 });
+
 
 test('test: different start times', function (t) {
         var metrics = lib.createMetrics();
@@ -105,6 +109,7 @@ test('test: different start times', function (t) {
         t.end();
 });
 
+
 test('test: different periods', function (t) {
         var metrics = lib.createMetrics();
         var differentPeriod = {
@@ -129,6 +134,7 @@ test('test: different periods', function (t) {
         t.equal(true, errCaught);
         t.end();
 });
+
 
 test('test: second brings in more metrics', function (t) {
         var metrics = lib.createMetrics();

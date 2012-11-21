@@ -85,7 +85,7 @@ _c.on('line', function (line) {
 });
 
 _c.on('end', function () {
-        console.log(_metrics.report());
+        console.log(JSON.stringify(_metrics.report()));
 });
 
 process.stdin.resume();
