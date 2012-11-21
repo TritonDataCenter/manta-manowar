@@ -22,7 +22,7 @@
       var graphs = [];
       var graphNum = 0;
       var dataCache = null; //Gets populated on first populate call.
-      var mantaPrefix = '/poseidon/stor/graph_data/';
+      var mantaPrefix = '/poseidon/stor/graphs/data/';
       var selectedGraph = null;
       var graphItButtonEnabled = false;
 
@@ -367,7 +367,8 @@
                       alert('getData called without a path');
               }
 
-              //Host override
+              //Host override - we let the manowar server that served this
+              // page to determine our manta host.
               var host = document.querySelector('#manta_host').value;
               if (host) {
                       path += '?host=' + host;
@@ -461,7 +462,7 @@
               var depth = opts.depth || 0;
 
               //Files are located at:
-              // /poseidon/stor/graph_data/[service]/[year]/[month]/[day]/[hour]/[period].data
+              // /poseidon/stor/graphs/data/[service]/[year]/[month]/[day]/[hour]/[period].data
               // So... parts array matches:0         1      2       3     4      5
 
               //This will break if we put data in other places.  It should
@@ -600,7 +601,7 @@
 
               //We hide the details of how we implement autocomplete... but
               // in manta the data is stored under:
-              // /poseidon/stor/graph_data/[service]/[year]/[month]/[day]/[hour]/[period].data
+              // /poseidon/stor/graphs/data/[service]/[year]/[month]/[day]/[hour]/[period].data
               // We want the path that people type in to be:
               // service/metric/stat
               // So we list the services when there are no path separators,

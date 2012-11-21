@@ -37,7 +37,7 @@ var SIGN = manta.privateKeySigner({
 
 var EXPIRES_SECONDS = 300; //5 minutes
 var VALID_PATH_PREFIXES = [
-        '/graph_data/'
+        '/graphs/data/'
 ];
 
 

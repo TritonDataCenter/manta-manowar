@@ -65,9 +65,9 @@ path, you can upload the data under the "data" directory by running:
 Then if you're running the server you can run this to verify that the signing
 portion of the server works:
 
-    curl http://localhost:8080/sign/poseidon/stor/graph_data/muskie/2012/11/13/01/60.data | xargs -i curl -v -k "{}"
+    curl http://localhost:8080/sign/poseidon/stor/graphs/data/muskie/2012/11/13/01/60.data | xargs -i curl -v -k "{}"
 
 If you're running on coal and you need to have a request signed for a different
 host, you can pass a host query parameter:
 
-    curl http://localhost:8080/sign/poseidon/stor/graph_data/muskie/2012/11/13/01/60.data?host=$(coal_manta_ip.sh) | xargs -i curl -v -k "{}"
+    curl http://localhost:8080/sign/poseidon/stor/graphs/data/muskie/2012/11/13/01/60.data?host=$(coal_manta_ip.sh) | xargs -i curl -v -k "{}"

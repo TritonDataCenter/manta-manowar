@@ -2,10 +2,11 @@
 
 : ${MANTA_URL?"MANTA_URL isn't set"}
 
-TMP_FILE=/tmp/graph_data
+TMP_FILE=/tmp/manowar_test_data
 
 for file in `find data/logs -type f`; do
-    DIR=/$MANTA_USER/stor/graph_data/$(dirname $file | perl -ne 's/data\/logs\///g; print;')
+    ROOT_DIR=/$MANTA_USER/stor/graphs
+    DIR=$ROOT_DIR/data/$(dirname $file | perl -ne 's/data\/logs\///g; print;')
     MANTA_OBJECT=$DIR/60.data
     echo $MANTA_OBJECT
 
@@ -13,6 +14,7 @@ for file in `find data/logs -type f`; do
         ./bin/laggr.js -p 60 -t time -f latency -f res.statusCode:latency \
         >$TMP_FILE
 
+    mmkdir $ROOT_DIR
     mmkdir -H 'Access-Control-Allow-Origin: *' -p $DIR
     mput -H 'Access-Control-Allow-Origin: *' -f $TMP_FILE $MANTA_OBJECT
 done

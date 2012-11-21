@@ -83,7 +83,7 @@ Crons kicked off from the cron zone will find logs and set off marlin jobs to
 aggregate/transform them over 5 minute periods.  The results of the
 transformations are uploaded to:
 
-    /poseidon/stor/graph_data/[service]/[year]/[month]/[day]/[hour]/5min
+    /poseidon/stor/graphs/data/[service]/[year]/[month]/[day]/[hour]/5min
 
 Other aggregations could be produced and put in appropriate locations.  Each of
 these aggregate files are in the format:
