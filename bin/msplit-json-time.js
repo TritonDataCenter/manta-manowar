@@ -10,7 +10,8 @@ var mod_getopt = require('posix-getopt');
  * msplit-json-time: demux streams to send to multiple reducers
  */
 var msUsageMessage = [
-        'usage: msplit-json-time.js [-n number_of_reducers] [-f field] [-p period]',
+        'usage: msplit-json-time.js [-n number_of_reducers] [-f field] ',
+        '          [-p period]',
         '',
         'msplit-json-time is used to split a stream of json objects into many',
         'mpipes, one per the number of reducers for your job.  The -n option',
@@ -138,7 +139,7 @@ function selectReducer(line, field, period, nReducers) {
         }
 
         //Parse as date and check validity
-        if ((typeof timeString) !== 'string') {
+        if ((typeof (timeString)) !== 'string') {
                 msFatal('Field ' + field + ' in line ' +
                         line + ' is not a string.');
         }

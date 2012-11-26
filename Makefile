@@ -87,6 +87,7 @@ release: all docs $(SMF_MANIFESTS)
 	@mkdir -p $(TMPDIR)/root/opt/smartdc/$(NAME)/etc
 	cp -r   $(ROOT)/bin \
 		$(ROOT)/build \
+		$(ROOT)/etc \
 		$(ROOT)/lib \
 		$(ROOT)/node_modules \
 		$(ROOT)/package.json \
