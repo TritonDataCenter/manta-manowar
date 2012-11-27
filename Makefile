@@ -29,6 +29,7 @@ JSL_CONF_NODE    = tools/jsl.node.conf
 JSL_FILES_NODE   = $(JS_FILES)
 JSSTYLE_FILES    = $(JS_FILES)
 JSSTYLE_FLAGS    = -f tools/jsstyle.conf
+SMF_MANIFESTS_IN = smf/manifests/manowar.xml.in
 
 #
 # Variables
@@ -92,6 +93,7 @@ release: all docs $(SMF_MANIFESTS)
 		$(ROOT)/node_modules \
 		$(ROOT)/package.json \
 		$(ROOT)/server.js \
+		$(ROOT)/smf \
 		$(ROOT)/static \
 		$(TMPDIR)/root/opt/smartdc/$(NAME)
 	#We remove build/prebuilt-* because those symlinks will cause tar
