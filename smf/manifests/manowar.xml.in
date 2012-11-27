@@ -27,9 +27,8 @@
 		     exec="node server.js 80 &amp;"
 		     timeout_seconds="30">
 	    <method_context working_directory="/opt/smartdc/manowar">
-                <method_credential user="nobody"
-                                   group="nobody"
-                                   privileges="basic,net_privaddr"/>
+                <!-- "root" here because it needs access to /root/.ssh/id_rsa -->
+                <method_credential user="root" />
                 <method_environment>
                     <envvar name="PATH"
                             value="/opt/smartdc/manowar/build/node/bin:/opt/local/bin:/usr/bin:/usr/sbin:/bin"/>
