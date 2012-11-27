@@ -11,7 +11,6 @@ var manta = require('manta');
 var MemoryStream = require('memorystream');
 var path = require('path');
 var sys = require('sys');
-var vasync = require('vasync');
 
 
 
@@ -94,7 +93,8 @@ node ./bin/stream-metrics.js -p ' + period + ' -t time ' + fds + ' \
 /* BEGIN JSSTYLED */
 function getSecondReduceCmd(outputObject) {
         return (ENV_COMMON + ' \
-node ./bin/merge-metrics.js | mpipe ' + outputObject + ' \
+node ./bin/merge-metrics.js | \
+  mpipe -H \'Access-Control-Allow-Origin: *\' ' + outputObject + ' \
 ');
 }
 /* END JSSTYLED */
@@ -234,6 +234,34 @@ function createDataGenMarlinJob(opts, cb) {
 }
 
 
+function createOutputDirs(opts, cb) {
+        assert.string(opts.outputDir);
+        assert.string(opts.recordPath);
+
+        var mopts = {
+                headers: {
+                        'Access-Control-Allow-Origin': '*'
+                }
+        };
+        //The output dir should have CORS, but nothing else.
+        MANTA_CLIENT.mkdirp(opts.outputDir, mopts, function (err) {
+                if (err) {
+                        cb(err);
+                        return;
+                }
+
+                MANTA_CLIENT.mkdirp(opts.recordPath, function (err2) {
+                        if (err2) {
+                                cb(err2);
+                                return;
+                        }
+                        cb();
+                });
+        });
+
+}
+
+
 function createLogProcessingJobAndRecord(opts, cb) {
         assert.string(opts.service);
         assert.string(opts.hourPath);
@@ -251,14 +279,8 @@ function createLogProcessingJobAndRecord(opts, cb) {
 
         LOG.info({ opts: opts }, 'setting up log processing job');
 
-        //Make sure output dirs exist...
-        var m = MANTA_CLIENT;
-        vasync.pipeline({
-                funcs: [
-                        function (_, cb1) { m.mkdirp(opts.outputDir, cb1); },
-                        function (_, cb1) { m.mkdirp(opts.recordPath, cb1); }
-                ]
-        }, function (err) {
+        //Make sure output dirs exist, create them if not...
+        createOutputDirs(opts, function (err) {
                 ifError(err, 'Error creating output directories');
 
                 createDataGenMarlinJob(opts, function (err2, jobId) {
@@ -442,7 +464,7 @@ if (_opts.service) {
         _config.services = newServices;
 }
 
-//Compute the last n hours only if the paths weren't specified on the commane
+//Compute the last n hours only if the paths weren't specified on the command
 // line
 if (_opts.hourPaths.length > 0) {
         _config.hourPaths = _opts.hourPaths;
