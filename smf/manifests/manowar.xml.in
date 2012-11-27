@@ -21,13 +21,12 @@
 	    <service_fmri value="svc:/system/filesystem/local" />
 	</dependency>
 
-
 	<exec_method type="method"
 		     name="start"
-		     exec="node server.js 80 &amp;"
+		     exec="sudo -u manowar MANTA_CONFIG=/home/manowar/manta.config.json node server.js 80 &amp;"
 		     timeout_seconds="30">
 	    <method_context working_directory="/opt/smartdc/manowar">
-                <!-- "root" here because it needs access to /root/.ssh/id_rsa -->
+                <!-- Even though this says 'root' we run as manowar. -->
                 <method_credential user="root" />
                 <method_environment>
                     <envvar name="PATH"
@@ -35,7 +34,7 @@
                     <envvar name="LD_PRELOAD_32"
                             value="/usr/lib/extendedFILE.so.1" />
                     <envvar name="NODE_NDEBUG" value="1" />
-		</method_environment>
+                </method_environment>
             </method_context>
 	</exec_method>
 
