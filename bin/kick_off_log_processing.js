@@ -100,36 +100,6 @@ node ./bin/merge-metrics.js | mpipe ' + outputObject + ' \
 /* END JSSTYLED */
 
 
-function parseOptions() {
-        var option;
-        var opts = {};
-        var parser = new getopt.BasicParser('s:',
-                                            process.argv);
-        while ((option = parser.getopt()) !== undefined && !option.error) {
-                switch (option.option) {
-                case 's':
-                        opts.service = option.optarg;
-                        break;
-                default:
-                        usage('Unknown option: ' + option.option);
-                        break;
-                }
-        }
-        return (opts);
-}
-
-
-function usage(msg) {
-        if (msg) {
-                console.error(msg);
-        }
-        var str  = 'usage: ' + path.basename(process.argv[1]);
-        str += ' -s [service]';
-        console.error(str);
-        process.exit(1);
-}
-
-
 function ifError(err, msg) {
         if (err) {
                 LOG.error(err, msg);
@@ -216,7 +186,7 @@ function arraysEqual(a1, a2) {
 
 
 function createDataGenMarlinJob(opts, cb) {
-        var nReducers = 3; //TODO: Should be based on the number of files...
+        var nReducers = 1; //TODO: Should be based on the number of files...
         var map = getMapCmd(nReducers, opts.period);
         var r1 = getFirstReduceCmd(opts.fields, opts.period);
         var r2 = getSecondReduceCmd(opts.outputObject);
@@ -398,6 +368,53 @@ function startJobs(config) {
 }
 
 
+function parseOptions() {
+        var option;
+        var opts = {};
+        opts.hourPaths = [];
+        var parser = new getopt.BasicParser('s:p:',
+                                            process.argv);
+        while ((option = parser.getopt()) !== undefined && !option.error) {
+                switch (option.option) {
+                case 'p':
+                        var hps = option.optarg.split('/');
+                        var usageMsg = 'Hour parts must be in the format: ' +
+                                '/[year]/[month]/[day]/[hour]';
+                        if (hps.length !== 5 || hps[0] !== '') {
+                                usage(usageMsg);
+                                break;
+                        }
+                        for (var i = 1; i < hps.length; ++i) {
+                                if (isNaN(parseInt(hps[i], 10))) {
+                                        usage(usageMsg);
+                                        break;
+                                }
+                        }
+                        opts.hourPaths.push(option.optarg);
+                        break;
+                case 's':
+                        opts.service = option.optarg;
+                        break;
+                default:
+                        usage('Unknown option: ' + option.option);
+                        break;
+                }
+        }
+        return (opts);
+}
+
+
+function usage(msg) {
+        if (msg) {
+                console.error(msg);
+        }
+        var str  = 'usage: ' + path.basename(process.argv[1]);
+        str += ' -s [service] -p [hour path (ie /2012/11/05/10)]';
+        console.error(str);
+        process.exit(1);
+}
+
+
 
 ///--- Main
 
@@ -411,20 +428,41 @@ try {
         process.exit(1);
 }
 
-//Figure out directories for the last n hours...
-var _hourPaths = [];
-var _hoursToScan = _config.past_hours_to_scan || 2;
-var _millis = (new Date()).getTime();
-for (var _i = 0; _i < _hoursToScan; ++_i) {
-        var _iso = getIsoParts(_millis);
-        var _p = '/' + _iso.year + '/' + _iso.month + '/' + _iso.day + '/' +
-                _iso.hour;
-        _hourPaths.push(_p);
-        _millis -= 3600000; //1 hour
+//Pull out only the service if it was specified...
+if (_opts.service) {
+        var _name = _opts.service;
+        if (!_config.services[_name]) {
+                LOG.error({ serviceName: _name },
+                          'given service name doesnt exist in config.  ' +
+                          'exiting...');
+                process.exit(1);
+        }
+        var newServices = {};
+        newServices[_name] = _config.services[_name];
+        _config.services = newServices;
 }
-LOG.info({ hoursToScan: _hoursToScan, hourPaths: _hourPaths },
-         'scanning past hours');
-_config.hourPaths = _hourPaths;
+
+//Compute the last n hours only if the paths weren't specified on the commane
+// line
+if (_opts.hourPaths.length > 0) {
+        _config.hourPaths = _opts.hourPaths;
+} else {
+        //Figure out directories for the last n hours...
+        var _hourPaths = [];
+        var _hoursToScan = _config.past_hours_to_scan || 2;
+        var _millis = (new Date()).getTime();
+        for (var _i = 0; _i < _hoursToScan; ++_i) {
+                var _iso = getIsoParts(_millis);
+                var _p = '/' + _iso.year + '/' + _iso.month + '/' + _iso.day +
+                        '/' + _iso.hour;
+                _hourPaths.push(_p);
+                _millis -= 3600000; //1 hour
+        }
+        LOG.info({ hoursToScan: _hoursToScan, hourPaths: _hourPaths },
+                 'scanning past hours');
+        _config.hourPaths = _hourPaths;
+}
+LOG.info({ hourPaths: _hourPaths }, 'scanning past hours');
 
 //First upload the bundle, then kick off the jobs...
 MANTA_CLIENT.mkdirp(MANOWAR_ASSET_DIR, function (_err) {
