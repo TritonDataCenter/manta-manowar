@@ -835,9 +835,13 @@
       <ul> \
         <li>Click <a href="' + err.mantaUrl + '">here</a> to see if your \
             browser can make the request.</li> \
-        <li>Is <code>' + host + '</code> the right Manta Endpoint?  If not use the \
-            box above to provide an override and try again.</li> \
+        <li>If clicking the above link caused you to be asked to trust a self \
+            signed cert and you did, you probably just solved your own \
+            problem. Try again.</li> \
+        <li>Is <code>' + host + '</code> the right Manta Endpoint?  If not use \
+            the box above to provide an override and try again.</li> \
       </ul> \
+      <a href=\'#\' onclick=\'testMantaConnection()\'>Try Connecting Again</a> \
       </p> \
       ';
                               } else {
