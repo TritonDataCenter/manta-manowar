@@ -1,6 +1,7 @@
 {
   "past_hours_to_scan": 3,
   "services": {
-    "muskie": [ "latency", "res.statusCode:latency" ]
+    "muskie": [ "latency", "res.statusCode:latency", "req.method:latency",
+                "hostname:latency", "res.headers.content-type:latency" ]
   }
 }
