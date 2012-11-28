@@ -703,10 +703,10 @@
                               getData({ path: gotPath }, processMetrics);
                       }
 
-                      var calledBackCount = 0;
                       function progressCallback(opts) {
                               if (opts.currentPath) {
-                                      var p = 'Searching Manta: /' +
+                                      var p = 'Searching Manta:<br>' +
+                                              mantaPrefix +
                                               opts.currentPath.join('/');
                                       showStatusDialog(p);
                               }
@@ -801,60 +801,31 @@
               testEnableGraphItButton();
       });
 
-      //--- Fun with dialogues
-      // increase the default animation speed to exaggerate the effect
+      //--- Fun with dialogues... I was using the JQuery UI dialog and
+      // tooltips, but the tooltips weren't reappearing on show and
+      // the dialog was stealing focus... so I made my own.  Sad but
+      // true.
+      //Increase the default animation speed to exaggerate the effect
       $.fx.speeds._default = 250;
       $(function() {
               var w = $("#header_separator")[0];
-              $( "#message_dialog" ).dialog({
-                      autoOpen: false,
-                      show: 'blind',
-                      hide: 'blind',
-                      width: 500,
-                      height: 'auto',
-                      position: {
-                              my: 'right top',
-                              at: 'right bottom',
-                              of: w
-                      }
-              });
-
-              var y = $("#header_separator")[0];
-              $( "#status_dialog" ).tooltip({
-                      show: 'blind',
-                      hide: 'blind',
-                      position: {
-                              my: 'left top',
-                              at: 'left bottom',
-                              of: y
-                      }
+              $("#status_dialog").position({
+                      my: 'right top',
+                      at: 'right bottom',
+                      of: w
               });
       });
 
-      $('.changesrc').attr('src',function(index,attr){
-              return attr.replace('images','images/alt');
-      });
-
-      function showMessageDialog(title, html) {
-              $("#message_dialog").dialog('option', 'title', title);
-              $("#message_dialog")[0].innerHTML = html;
-              $("#message_dialog").dialog('open');
-      }
-
-      function hideMessageDialog() {
-              $("#message_dialog").dialog("close");
-      }
-
-      function showStatusDialog(string, closeSoon) {
-              $("#status_dialog").tooltip('option', 'content', string);
-              $("#status_dialog").tooltip('open');
+      function showStatusDialog(html, closeSoon) {
+              $('#status_dialog')[0].innerHTML = html;
+              $('#status_dialog').slideDown();
               if (closeSoon) {
-                      setTimeout(hideStatusDialog, 2000);
+                      setTimeout(hideStatusDialog, 1500);
               }
       }
 
       function hideStatusDialog() {
-              $("#status_dialog").tooltip("close");
+              $('#status_dialog').slideUp();
       }
 
       //--- Fun with the override
@@ -896,7 +867,7 @@
                               if (err.mantaUrl) {
                                       var host = err.mantaUrl.split('/')[2];
                                       m = ' \
-      <p>Looks like we can\'t currently get data from Manta.</p> \
+      Looks like we can\'t currently get data from Manta.<br> \
       <p>Troubleshooting: \
       <ul> \
         <li>Click <a href="' + err.mantaUrl + '">here</a> to see if your \
@@ -912,16 +883,13 @@
       ';
                               } else {
                                       m = ' \
-      <p>Looks like the Man O\' War server is down.</p> \
+      Looks like the Man O\' War server is down. \
       ';
                               }
-                              showMessageDialog('Bummer...', m);
+                              showStatusDialog(m);
                       } else {
-                              var m = '<p>Connected to Manta!</p>';
-                              showMessageDialog('Success!', m);
-                              setTimeout(function () {
-                                      hideMessageDialog();
-                              }, 1500);
+                              var m = 'Connected to Manta!';
+                              showStatusDialog(m, true);
                       }
 
               });
@@ -952,7 +920,7 @@
       </tr>
     </table>
     <hr id="header_separator">
-    <div id='status_dialog' title=''></div>
+    <div id='status_dialog'></div>
 
     <ul id="content" class="sortable list"></ul>
   </body>
