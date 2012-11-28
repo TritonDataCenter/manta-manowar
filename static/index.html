@@ -575,27 +575,57 @@
               var service = opts.service;
               var cPath = opts.currentPath || [ service ];
               var eDepth = opts.endDepth || 6;
+              var popped = opts.popped;
+              var progressCallback = opts.progressCallback;
+
+              //Progress Callback...
+              if (progressCallback) {
+                      progressCallback(opts);
+              }
 
               getData({ path: cPath }, function (err, obj) {
                       if (err) {
                               cb(err);
                               return;
                       }
+
                       var list = [];
                       for (var d in obj) {
                               list.push(d);
                       }
-                      list.sort();
-                      cPath.push(list[list.length - 1]);
-                      if (cPath.length === eDepth) {
-                              cb(null, cPath);
-                      } else {
-                              findLatestMetricsPath({
-                                      service: service,
-                                      currentPath: cPath,
-                                      endDepth: eDepth
-                              }, cb);
+                      list.sort(function (a, b) { return (b - a); });
+                      var index = 0;
+                      if (popped && list.indexOf(popped) > -1) {
+                              index = list.indexOf(popped) + 1;
                       }
+
+                      //If the current level has no entries, we pop off
+                      // the stack and try the next one in line...
+                      if (list.length > index && list[index]) {
+                              cPath.push(list[index]);
+                              popped = null;
+                              //Base case...
+                              if (cPath.length === eDepth) {
+                                      cb(null, cPath);
+                                      return;
+                              }
+                      } else {
+                              popped = cPath.pop();
+                              //Case where we've searched everthing and
+                              // haven't gotten to the depth we expect.
+                              if (cPath.length < 2) {
+                                      var e = new Error('No data found');
+                                      cb(e);
+                                      return;
+                              }
+                      }
+                      findLatestMetricsPath({
+                              service: service,
+                              currentPath: cPath,
+                              endDepth: eDepth,
+                              popped: popped,
+                              progressCallback: progressCallback
+                      }, cb);
               });
       }
 
@@ -660,14 +690,31 @@
                       }
 
                       var processPath = function (err, gotPath) {
+                              hideStatusDialog();
                               if (err) {
+                                      showStatusDialog('Couldn\'t find ' +
+                                                       'autocomplete data ' +
+                                                       'for ' + pathParts[0] +
+                                                       '.',
+                                                       true);
                                       console.log(err);
                                       return;
                               }
                               getData({ path: gotPath }, processMetrics);
                       }
 
-                      findLatestMetricsPath({ service: pathParts[0] }, processPath);
+                      var calledBackCount = 0;
+                      function progressCallback(opts) {
+                              if (opts.currentPath) {
+                                      var p = 'Searching Manta: /' +
+                                              opts.currentPath.join('/');
+                                      showStatusDialog(p);
+                              }
+                      }
+                      findLatestMetricsPath({
+                              service: pathParts[0],
+                              progressCallback: progressCallback
+                      }, processPath);
               }
 
       }
@@ -754,9 +801,9 @@
               testEnableGraphItButton();
       });
 
-      //--- Fun with the popup dialogue
+      //--- Fun with dialogues
       // increase the default animation speed to exaggerate the effect
-      $.fx.speeds._default = 100;
+      $.fx.speeds._default = 250;
       $(function() {
               var w = $("#header_separator")[0];
               $( "#message_dialog" ).dialog({
@@ -772,8 +819,15 @@
                       }
               });
 
-              $( "#opener" ).click(function() {
-                      return false;
+              var y = $("#header_separator")[0];
+              $( "#status_dialog" ).tooltip({
+                      show: 'blind',
+                      hide: 'blind',
+                      position: {
+                              my: 'left top',
+                              at: 'left bottom',
+                              of: y
+                      }
               });
       });
 
@@ -789,6 +843,18 @@
 
       function hideMessageDialog() {
               $("#message_dialog").dialog("close");
+      }
+
+      function showStatusDialog(string, closeSoon) {
+              $("#status_dialog").tooltip('option', 'content', string);
+              $("#status_dialog").tooltip('open');
+              if (closeSoon) {
+                      setTimeout(hideStatusDialog, 2000);
+              }
+      }
+
+      function hideStatusDialog() {
+              $("#status_dialog").tooltip("close");
       }
 
       //--- Fun with the override
@@ -855,7 +921,7 @@
                               showMessageDialog('Success!', m);
                               setTimeout(function () {
                                       hideMessageDialog();
-                              }, 2000);
+                              }, 1500);
                       }
 
               });
@@ -886,6 +952,7 @@
       </tr>
     </table>
     <hr id="header_separator">
+    <div id='status_dialog' title=''></div>
 
     <ul id="content" class="sortable list"></ul>
   </body>
