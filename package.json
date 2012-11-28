@@ -10,7 +10,7 @@
 		"carrier": "0.1.7",
 		"express": "3.0.1",
                 "memorystream": "0.2.0",
-		"node-manta": "git+ssh://git@git.joyent.com:node-manta.git#master",
+		"node-manta": "git+ssh://git@github.com:joyent/node-manta.git#master",
 		"posix-getopt": "1.0.0"
         },
         "devDependencies": {
