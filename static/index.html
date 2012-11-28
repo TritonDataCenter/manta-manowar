@@ -1,6 +1,6 @@
 <html>
   <head>
-    <title>Graph Prototype</title>
+    <title>Man O&#39; War</title>
 
     <link type="text/css" rel="stylesheet" href="css/detail.css">
     <link type="text/css" rel="stylesheet" href="css/extensions.css">
@@ -374,33 +374,42 @@
                       path += '?host=' + host;
               }
 
+              var signatureUrl = '/sign' + path;
+              var mantaUrl = null;
+
+              var error = function (xhr, err) {
+                      var e = {};
+                      if (err) {
+                              e.err = err;
+                      }
+                      if (xhr) {
+                              e.xhr = xhr
+                      }
+                      e.signatureUrl = signatureUrl;
+                      e.mantaUrl = mantaUrl;
+                      cb(e);
+              }
+
               var successDataGet = function (data, status) {
                       cb(null, data);
               }
 
-              var errorDataGet = function (xhr, err) {
-                      cb(err);
-              }
-
-              var successUrlGet = function (mantaUrl, status) {
+              var successUrlGet = function (mantaUrlGot, status) {
+                      mantaUrl = mantaUrlGot;
                       $.ajax({
                               url: mantaUrl,
                               dataType: 'text',
                               success: successDataGet,
-                              error: errorDataGet
+                              error: error
                       });
-              }
-
-              var errorUrlGet = function (xhr, err) {
-                      cb(err);
               }
 
               //Get a presigned URL from manowar
               $.ajax({
-                      url: '/sign' + path,
+                      url: signatureUrl,
                       dataType: 'text',
                       success: successUrlGet,
-                      error: errorUrlGet
+                      error: error
               });
       }
 
@@ -472,6 +481,7 @@
                       listMantaDir(p, function (err, dirs) {
                               if (err) {
                                       err.terminationDepth = depth;
+                                      err.opts = opts;
                                       cb(err);
                                       return;
                               }
@@ -530,7 +540,9 @@
                       var p = mantaPrefix + path.slice(0, depth).join('/') + '.data';
                       getMantaData(p, function(err, data) {
                               if (err) {
-                                      cb({ terminationDepth: depth });
+                                      err.terminationDepth = depth;
+                                      err.opts = opts;
+                                      cb(err);
                                       return;
                               }
                               var dataObj = JSON.parse(data);
@@ -742,6 +754,49 @@
               testEnableGraphItButton();
       });
 
+      //--- Fun with the popup dialogue
+      // increase the default animation speed to exaggerate the effect
+      $.fx.speeds._default = 100;
+      $(function() {
+              var w = $("#header_separator")[0];
+              $( "#message_dialog" ).dialog({
+                      autoOpen: false,
+                      show: 'blind',
+                      hide: 'blind',
+                      width: 500,
+                      height: 'auto',
+                      position: {
+                              my: 'right top',
+                              at: 'right bottom',
+                              of: w
+                      }
+              });
+
+              $( "#opener" ).click(function() {
+                      return false;
+              });
+      });
+
+      $('.changesrc').attr('src',function(index,attr){
+              return attr.replace('images','images/alt');
+      });
+
+      function showMessageDialog(title, html) {
+              $("#message_dialog").dialog('option', 'title', title);
+              $("#message_dialog")[0].innerHTML = html;
+              $("#message_dialog").dialog('open');
+      }
+
+      function hideMessageDialog() {
+              $("#message_dialog").dialog("close");
+      }
+
+      //--- Fun with the override
+      function overrideUpdated() {
+              saveConfig();
+              testMantaConnection();
+      }
+
       //--- Fun with saving/restoring config
       var fieldsToSave = [
               'manta_host'
@@ -768,14 +823,49 @@
               }
       }
 
+      function testMantaConnection() {
+              getMantaData(mantaPrefix, function (err) {
+                      if (err) {
+                              var m = '';
+                              if (err.mantaUrl) {
+                                      var host = err.mantaUrl.split('/')[2];
+                                      m = ' \
+      <p>Looks like we can\'t currently get data from Manta.</p> \
+      <p>Troubleshooting: \
+      <ul> \
+        <li>Click <a href="' + err.mantaUrl + '">here</a> to see if your \
+            browser can make the request.</li> \
+        <li>Is <code>' + host + '</code> the right Manta Endpoint?  If not use the \
+            box above to provide an override and try again.</li> \
+      </ul> \
+      </p> \
+      ';
+                              } else {
+                                      m = ' \
+      <p>Looks like the Man O\' War server is down.</p> \
+      ';
+                              }
+                              showMessageDialog('Bummer...', m);
+                      } else {
+                              var m = '<p>Connected to Manta!</p>';
+                              showMessageDialog('Success!', m);
+                              setTimeout(function () {
+                                      hideMessageDialog();
+                              }, 2000);
+                      }
+
+              });
+      }
+
       //--- Onload
       $(function () {
               loadConfig();
+              testMantaConnection();
       });
     </script>
   </head>
   <body>
-    <table width=100% border=0>
+    <table width=100% border=0 id="header_table">
       <tr>
         <td align=left>Man O' War</td>
         <td align=center>
@@ -786,11 +876,12 @@
         </td>
         <td align=right>
           Manta Host Override:
-          <input type=text id='manta_host' name='manta_host' onkeyup='saveConfig()' size=15>
+          <input type=text id='manta_host' name='manta_host' onchange='overrideUpdated()' size=15>
+          <div id="message_dialog" /></div>
         </td>
       </tr>
     </table>
-    <hr>
+    <hr id="header_separator">
 
     <ul id="content" class="sortable list"></ul>
   </body>
