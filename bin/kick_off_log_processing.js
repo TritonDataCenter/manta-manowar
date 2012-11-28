@@ -347,7 +347,7 @@ function makeServiceJob(opts, cb) {
 
                         //Kick out if the same set of files was already
                         // processed.
-                        if (jobInfo.objects &&
+                        if (!opts.forceReprocess && jobInfo.objects &&
                             arraysEqual(jobInfo.objects, opts.objects)) {
                                 LOG.info({
                                         opts: opts
@@ -375,11 +375,13 @@ function startJobs(config) {
 
                 for (var i = 0; i < config.hourPaths.length; ++i) {
                         var hourPath = config.hourPaths[i];
+                        var forceReprocess = config.forceReprocess;
                         makeServiceJob({
                                 service: service,
                                 hourPath: hourPath,
                                 fields: fields,
-                                period: 60
+                                period: 60,
+                                forceReprocess: forceReprocess
                         }, function (err) {
                                 ifError(err, 'Error making service job for ' +
                                         ' service: ' + service +
@@ -394,10 +396,13 @@ function parseOptions() {
         var option;
         var opts = {};
         opts.hourPaths = [];
-        var parser = new getopt.BasicParser('s:p:',
+        var parser = new getopt.BasicParser('fs:p:',
                                             process.argv);
-        while ((option = parser.getopt()) !== undefined && !option.error) {
+        while ((option = parser.getopt()) !== undefined) {
                 switch (option.option) {
+                case 'f':
+                        opts.forceReprocess = true;
+                        break;
                 case 'p':
                         var hps = option.optarg.split('/');
                         var usageMsg = 'Hour parts must be in the format: ' +
@@ -418,7 +423,7 @@ function parseOptions() {
                         opts.service = option.optarg;
                         break;
                 default:
-                        usage('Unknown option: ' + option.option);
+                        usage('');
                         break;
                 }
         }
@@ -431,7 +436,22 @@ function usage(msg) {
                 console.error(msg);
         }
         var str  = 'usage: ' + path.basename(process.argv[1]);
-        str += ' -s [service] -p [hour path (ie /2012/11/05/10)]';
+        str += ' -s [service] -f -p [hour path (ie /2012/11/05/10)]\n';
+        str += '\n';
+        str += 'If no arguments are given the config specified using the\n';
+        str += 'MANOWAR_CONFIG will be used to figure out which services\n';
+        str += 'should be updated.  By default this will figure out the last\n';
+        str += 'n hour paths (based on config) and kick off jobs for\n';
+        str += 'services for those hours.  Otherwise:\n';
+        str += '\n';
+        str += '-f  Force jobs to be created even if manowar already has a\n';
+        str += '    record that the logs were processed.\n';
+        str += '\n';
+        str += '-s  Specify a single service.  Configuration for the service\n';
+        str += '    must be present in the MANOWAR_CONFIG file.\n';
+        str += '\n';
+        str += '-p  Specify an "hour path" to process.  The hour path is in\n';
+        str += '    the following format: /[year]/[month]/[day]/[hour]\n';
         console.error(str);
         process.exit(1);
 }
@@ -485,6 +505,10 @@ if (_opts.hourPaths.length > 0) {
         _config.hourPaths = _hourPaths;
 }
 LOG.info({ hourPaths: _hourPaths }, 'scanning past hours');
+
+if (_opts.forceReprocess) {
+        _config.forceReprocess = true;
+}
 
 //First upload the bundle, then kick off the jobs...
 MANTA_CLIENT.mkdirp(MANOWAR_ASSET_DIR, function (_err) {
