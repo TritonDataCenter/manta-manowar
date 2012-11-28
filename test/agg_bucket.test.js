@@ -36,13 +36,19 @@ test('test: basic bucket', function (t) {
                 period: period
         });
         var n = lastDateAtPeriod(period);
+
+        //Period 1
         ab.apply({ t: d(n, 2), x: 1 });
         ab.apply({ t: d(n, 4), x: 1 });
         ab.apply({ t: d(n, 6), x: 1 });
         ab.apply({ t: d(n, 8), x: 1 });
+
+        //Period 2
         ab.apply({ t: d(n, 10), x: 1 });
         ab.apply({ t: d(n, 12), x: 2 });
         ab.apply({ t: d(n, 14), x: 3 });
+
+        //Period 3
         ab.apply({ t: d(n, 20), x: 10 });
 
         //Report should only contain one thing: report
@@ -57,9 +63,59 @@ test('test: basic bucket', function (t) {
         t.deepEqual(rep.n, [ 4, 3, 1 ]);
         t.deepEqual(rep.sum, [ 4, 6, 10 ]);
         t.deepEqual(rep.avg, [ 1, 2, 10 ]);
+        t.deepEqual(rep.min, [ 1, 1, 10 ]);
+        t.deepEqual(rep.max, [ 1, 3, 10 ]);
+        t.deepEqual(rep.p50, [ 1, 2, 10 ]);
+        t.deepEqual(rep.p90, [ 1, 3, 10 ]);
+        t.deepEqual(rep.p99, [ 1, 3, 10 ]);
 
         t.equal(n.getTime() / 1000, ab.minPeriod);
         t.equal((n.getTime() / 1000) + 20, ab.maxPeriod);
+
+        t.end();
+});
+
+
+test('test: statistics bigger', function (t) {
+        var period = 10000;
+        var field = 'x';
+        var ab = lib.createAggBucket({
+                timeField: 't',
+                field: field,
+                period: period
+        });
+        var n = lastDateAtPeriod(period);
+
+        //Only one period, but lots o' numbers
+        for (var i = 0; i < period; ++i) {
+                //The + 1 means we have a range of 1..period
+                ab.apply({ t: d(n, i), x: i + 1 });
+        }
+
+        //Report should only contain one thing: report
+        var report = ab.report();
+        t.ok(report[field] != undefined);
+        t.equal(1, Object.keys(report).length);
+
+        var rep = report[field];
+        t.equal(1, rep.n.length);
+        t.equal(1, rep.avg.length);
+        t.equal(1, rep.sum.length);
+
+        //We're hardhoding the expected answers based on 1..10000
+        t.deepEqual(rep.n, [ 10000 ]);
+        t.deepEqual(rep.sum, [ 50005000 ]);
+        t.deepEqual(rep.avg, [ 5000 ]);
+        t.deepEqual(rep.min, [ 1 ]);
+        t.deepEqual(rep.max, [ 10000 ]);
+        //50% of the numbers are smaller than 5001
+        t.deepEqual(rep.p50, [ 5001 ]);
+        t.deepEqual(rep.p90, [ 9001 ]);
+        t.deepEqual(rep.p99, [ 9901 ]);
+
+        t.equal(n.getTime() / 1000, ab.minPeriod);
+        //There's only one period
+        t.equal(n.getTime() / 1000, ab.maxPeriod);
 
         t.end();
 });
