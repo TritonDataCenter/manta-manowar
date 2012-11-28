@@ -576,6 +576,7 @@
               var cPath = opts.currentPath || [ service ];
               var eDepth = opts.endDepth || 6;
               var popped = opts.popped;
+              var startTime = opts.startTime || (new Date()).getTime();
               var progressCallback = opts.progressCallback;
 
               //Progress Callback...
@@ -624,6 +625,7 @@
                               currentPath: cPath,
                               endDepth: eDepth,
                               popped: popped,
+                              startTime: startTime,
                               progressCallback: progressCallback
                       }, cb);
               });
@@ -704,7 +706,11 @@
                       }
 
                       function progressCallback(opts) {
-                              if (opts.currentPath) {
+                              //Only show if the search has gone on for
+                              // more than 500 milliseconds...
+                              var now = (new Date()).getTime();
+                              if (opts.currentPath &&
+                                  (now - opts.startTime) > 500) {
                                       var p = 'Searching Manta:<br>' +
                                               mantaPrefix +
                                               opts.currentPath.join('/');
