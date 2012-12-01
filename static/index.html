@@ -867,6 +867,12 @@
       }
 
       function testMantaConnection() {
+              showStatusDialog('\
+      <table border=0 width=100%><tr> \
+        <td>Testing manta connection...</td> \
+        <td align=right><img src="css/images/ui-anim_basic_16x16.gif"></td> \
+      </tr></table> \
+      ');
               getMantaData(mantaPrefix, function (err) {
                       if (err) {
                               var m = '';
