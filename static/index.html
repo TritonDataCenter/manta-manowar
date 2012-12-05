@@ -775,6 +775,19 @@
               });
 
               //Date/time choosers
+              //See: http://stackoverflow.com/questions/11963621/how-to-obtain-utc-time-in-jquery-datetimepicker
+              $.datepicker._gotoToday = function(id) {
+                      var inst = this._getInst($(id)[0]),
+                      $dp = inst.dpDiv;
+                      this._base_gotoToday(id);
+                      var tp_inst = this._get(inst, 'timepicker');
+                      //removed -> selectLocalTimeZone(tp_inst);
+                      var now = new Date();
+                      var now_utc = new Date(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(),  now.getUTCHours(), now.getUTCMinutes(), now.getUTCSeconds());
+                      this._setTime(inst, now_utc);
+                      $('.ui-datepicker-today', $dp).click();
+              };
+
               var startDateTextBox = $('#start_date');
               var endDateTextBox = $('#end_date');
 
