@@ -760,7 +760,18 @@
               //Turn on autocompletion for the path
               $('#path_chooser').autocomplete({
                       minLength: 0,
-                      source: autocompletePath
+                      source: autocompletePath,
+                      select: function (e, ui) {
+                              var val = ui.item.value;
+                              var parts = val.split('/');
+                              if (parts.length < 3) {
+                                      //Thanks to scott.gonzalez
+                                      // http://stackoverflow.com/questions/12984151/trigger-search-from-select-within-jquery-ui-autocomplete
+                                      setTimeout(function() {
+                                              $('#path_chooser').autocomplete('search', val);
+                                      }, 1);
+                              }
+                      }
               });
 
               //Date/time choosers
