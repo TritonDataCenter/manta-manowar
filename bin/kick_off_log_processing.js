@@ -183,7 +183,11 @@ function arraysEqual(a1, a2) {
 
 
 function createDataGenMarlinJob(opts, cb) {
-        var nReducers = 1; //TODO: Should be based on the number of files...
+        assert.arrayOfString(opts.objects);
+
+        //At most 60 reducers... one reducer per 10 files.  Right now
+        // the '10' is rather arbitrary.
+        var nReducers = Math.min(Math.ceil(opts.objects.length / 10), 60);
         var map = getMapCmd(nReducers, opts.period);
         var r1 = getFirstReduceCmd(opts.fields, opts.period);
         var r2 = getSecondReduceCmd(opts.outputObject);
