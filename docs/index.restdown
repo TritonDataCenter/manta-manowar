@@ -20,10 +20,81 @@ component:
 2. Browser app for displaying dashboards.
 3. Server for serving up ^^ and for generating presigned URLs.
 
+# Getting Graphs for Your Service
+
+First, verify that your service logs are emitting "audit" records.  As a first
+step in the log crunching process, the marlin job will filter out any messages
+that don't contain `'audit': true`.  Once you have a sample record, you can
+identify fields that can be used to compute metrics.
+
+Metrics can be calculated over any field that has as numeric value.  For
+example, in the following structure the `latency`, `objectSize`, and
+`res.statusCode` can have statistics computed for them:
+
+    {
+      "audit": true,
+      "method": "GET",
+      "url": "/nate/stor/a.txt",
+      "res": {
+        "statusCode": 200
+      },
+      "latency": 6,
+      "objectSize": 2046
+    }
+
+No, it doesn't make sense to compute statistics for the statusCode, but it is
+possible.  Fields for aggregation are defined in:
+
+    etc/config.json
+
+The format of that file is:
+
+    {
+      "[service name]": [ "[field to aggregate]", ... ],
+      ...
+    }
+
+Fields for aggregation are in the following format:
+
+   `[label_field:]aggregation_field`
+
+The label field is optional and is used to find specific fields to use as
+labels.  The aggregation field is used to gather statistics.  Either field can
+use a '.' to follow a field into a structure.  For example, `res.statusCode`
+would refer to the `statusCode` field in the `res` object.  Using the example
+above, here are some aggregations that can be done:
+
+1. `latency` : Compute statistics for all values found in a `latency` field.
+2. `res.statusCode:latency` : For each status code, compute latency statistics.
+3. `method:objectSize` : For each method, compute statistics on object sizes.
+
+The `service name` is used to find logs for the marlin jobs.  The Man O' War
+cron will search for all logs under the following path:
+
+    /poseidon/stor/logs/[service name]/[year]/[month]/[day]/[hour]
+
+For debugging purposes you can see what logs were used for generating graph
+data by looking under:
+
+    /poseidon/stor/graphs/processed/[[service name]/[year]/[month]/[day]/[hour]/job_info.json
+
+So after seeing that your service is:
+
+1. Publishing logs with audit fields to `/poseidon/stor/logs/[your service]/...`
+2. Editing `manowar.git/etc/config.json` to add your service and aggregation
+   fields and submitting.
+
+You're done.  Now wait for your service to produce metrics:
+
+   `$ mfind /poseidon/stor/graphs/data/[your service]`
+
+Then pull up the manowar page in a browser and search for your service.  The
+server is hosted on on the ops zone in Manta on port 80.
+
 # Design
 
-Man O' War requires services to generate logs in the common restify "audit"
-format.  A sample request from Muskie:
+Man O' War requires services and processes to generate logs with `audit` fields.
+For example this is a sample request from Muskie:
 
 <code>
 {
@@ -77,31 +148,31 @@ format.  A sample request from Muskie:
 
 These logs are uploaded to manta under:
 
-    /poseidon/stor/logs/[service]/[year]/[month]/[day]/[server].log.bz2
+    /poseidon/stor/logs/[service]/[year]/[month]/[day]/[server].log.gz
 
 Crons kicked off from the cron zone will find logs and set off marlin jobs to
-aggregate/transform them over 5 minute periods.  The results of the
+aggregate/transform them over 1 minute periods.  The results of the
 transformations are uploaded to:
 
-    /poseidon/stor/graphs/data/[service]/[year]/[month]/[day]/[hour]/5min
+    /poseidon/stor/graphs/data/[service]/[year]/[month]/[day]/[hour]/60.data
 
 Other aggregations could be produced and put in appropriate locations.  Each of
 these aggregate files are in the format:
 
 <code>
 {
-  'service': muskie,
-  'period': '5min',
-  'start': 1234567890,
-  'metrics': {
-    'latency': {
-      'avg': [ { x: 1234567890, y: 5 }, ... ]
-      'n': [ ... ],
+  "period": 60,
+  "start": "2012-12-04T22:00:00.000Z",
+  "end": "2012-12-04T22:59:00.000Z",
+  "metrics": {
+    "latency": {
+      "avg": [ 123, ... ]
+      "n": [ ... ],
       ...
     },
-    'statusCode.200': {
-      'avg': [ ... ],
-      'n': [ ... ],
+    "statusCode.200:latency": {
+      "avg": [ ... ],
+      "n": [ ... ],
       ...
     },
     ...
