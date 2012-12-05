@@ -479,6 +479,10 @@ Rickshaw.Graph = function(args) {
 
 		var domain = this.renderer.domain();
 
+                if (!domain) {
+                        return;
+                }
+
 		this.x = d3.scale.linear().domain(domain.x).range([0, this.width]);
 
 		this.y = d3.scale.linear().domain(domain.y).range([this.height, 0]);
@@ -1601,6 +1605,10 @@ Rickshaw.Graph.HoverDetail = Rickshaw.Class.create({
 
 		var topSeriesData = stackedData.slice(-1).shift();
 
+                if (!topSeriesData || !topSeriesData[0]) {
+                        return;
+                }
+
 		var domainIndexScale = d3.scale.linear()
 			.domain([topSeriesData[0].x, topSeriesData.slice(-1).shift().x])
 			.range([0, topSeriesData.length]);
@@ -1863,7 +1871,12 @@ Rickshaw.Graph.RangeSlider = function(args) {
 		} );
 	} );
 
-	element[0].style.width = graph.width + 'px';
+        if (element && element[0] && element[0].style) {
+	        element[0].style.width = graph.width + 'px';
+        }
+        else if (element && element.style) {
+	        element.style.width = graph.width + 'px';
+        }
 
 	graph.onUpdate( function() {
 
@@ -1926,6 +1939,10 @@ Rickshaw.Graph.Renderer = Rickshaw.Class.create( {
 				values.push( d.y + d.y0 );
 			} );
 		} );
+
+                if (!stackedData[0] || !stackedData[0][0]) {
+                        return;
+                }
 
 		var xMin = stackedData[0][0].x;
 		var xMax = stackedData[0][ stackedData[0].length - 1 ].x;

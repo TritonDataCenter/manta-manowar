@@ -259,12 +259,15 @@
       function newGraph(obj) {
               //Create an new div and append to content...
               var did = 'graph-div-' + graphNum;
-              var gid = 'graph' + graphNum;
-              var lid = 'legend' + graphNum;
+              var gid = 'graph-' + graphNum;
+              var sid = 'graph-slider-' + graphNum;
+              var lid = 'legend-' + graphNum;
               graphNum++;
 
               var gdiv = '<table border=0><tr><td rowspan=2 width="100%">' +
                       '<div id="' + gid + '"></div>' +
+                      '<br>' +
+                      '<div id="' + sid + '"></div>' +
                       '</td><td valign=top>' +
                       '<a href="#" class="redx" onclick=removeGraph("' + did + '")>x</a>' +
                       '</td></tr><tr><td valign=top>' +
@@ -323,8 +326,15 @@
                               return content;
                       }
               });
+
+              var slider = new Rickshaw.Graph.RangeSlider({
+                      graph: graph,
+                      element: document.querySelector('#' + sid)
+              });
+
               graph.legendid = lid;
               giveGraphLegend(graph);
+
               makeDraggable();
 
               return graph;
@@ -651,78 +661,99 @@
               // So we list the services when there are no path separators,
               // for the others, we trace down the latest path, pull the latest
               // data we can find and display the metrics and stats available,
+
+              var processMetrics = function (err, obj) {
+                      if (err) {
+                              console.log(err);
+                              response([]);
+                              return;
+                      }
+
+                      var prefix = null;
+                      var term = null;
+
+                      if (pathParts.length === 1) {
+                              prefix = current + '/';
+                              term = '';
+                      } else if (pathParts.length === 2 && obj[pathParts[1]]) {
+                              prefix = pathPrefix + pathParts[1] + '/';
+                              obj = obj[pathParts[1]];
+                              term = '';
+                      } else if (pathParts.length === 2) {
+                              prefix = pathPrefix;
+                              term = pathParts[1];
+                      } else {
+                              prefix = pathPrefix;
+                              obj = obj[pathParts[1]];
+                              term = pathParts[2];
+                      }
+
+                      //obj, prefix and term should be filled in by now...
+                      var list = [];
+                      for (var o in obj) {
+                              if (o.startsWith(term)) {
+                                      list.push(prefix + o);
+                              }
+                      }
+                      response(list);
+              }
+
+              var processPath = function (err, gotPath) {
+                      hideStatusDialog();
+                      if (err) {
+                              showStatusDialog('Couldn\'t find ' +
+                                               'autocomplete data ' +
+                                               'for ' + pathParts[0] +
+                                               '.',
+                                               true);
+                              console.log(err);
+                              return;
+                      }
+                      getData({ path: gotPath }, processMetrics);
+              }
+
+              function progressCallback(opts) {
+                      //Only show if the search has gone on for
+                      // more than 500 milliseconds...
+                      var now = (new Date()).getTime();
+                      if (opts.currentPath &&
+                          (now - opts.startTime) > 500) {
+                              var p = 'Searching Manta:<br>' +
+                                      mantaPrefix +
+                                      opts.currentPath.join('/');
+                              showStatusDialog(p);
+                      }
+              }
+
               if (pathParts.length < 2) {
                       getData({ path: path }, function (err, services) {
                               if (err) {
                                       return;
                               }
-                              var list = [];
-                              for (var d in services) {
-                                      if (d.startsWith(current)) {
-                                              list.push(d);
+
+                              //If we have an exact match, "fall through"
+                              if (services[current] ||
+                                  services[current] === null) {
+                                      findLatestMetricsPath({
+                                              service: pathParts[0],
+                                              progressCallback: progressCallback
+                                      }, processPath);
+                              } else {
+                                      var list = [];
+                                      for (var d in services) {
+                                              if (d.startsWith(current)) {
+                                                      list.push(d);
+                                              }
                                       }
+                                      response(list);
                               }
-                              response(list);
                       });
               } else {
-                      var processMetrics = function (err, obj) {
-                              var term = pathParts[1];
-                              var st = pathParts[2];
-                              if (err) {
-                                      console.log(err);
-                                      response([]);
-                              }
-                              //We're looking for a stat, so move the object
-                              // down a level.
-                              if (st || st === '') {
-                                      if (!obj[term]) {
-                                              response([]);
-                                              return;
-                                      }
-                                      obj = obj[term];
-                                      term = st;
-                              }
-                              var list = [];
-                              for (var o in obj) {
-                                      if (o.startsWith(term)) {
-                                              list.push(pathPrefix + o);
-                                      }
-                              }
-                              response(list);
-                      }
-
-                      var processPath = function (err, gotPath) {
-                              hideStatusDialog();
-                              if (err) {
-                                      showStatusDialog('Couldn\'t find ' +
-                                                       'autocomplete data ' +
-                                                       'for ' + pathParts[0] +
-                                                       '.',
-                                                       true);
-                                      console.log(err);
-                                      return;
-                              }
-                              getData({ path: gotPath }, processMetrics);
-                      }
-
-                      function progressCallback(opts) {
-                              //Only show if the search has gone on for
-                              // more than 500 milliseconds...
-                              var now = (new Date()).getTime();
-                              if (opts.currentPath &&
-                                  (now - opts.startTime) > 500) {
-                                      var p = 'Searching Manta:<br>' +
-                                              mantaPrefix +
-                                              opts.currentPath.join('/');
-                                      showStatusDialog(p);
-                              }
-                      }
                       findLatestMetricsPath({
                               service: pathParts[0],
                               progressCallback: progressCallback
                       }, processPath);
               }
-
       }
 
       $(function () {

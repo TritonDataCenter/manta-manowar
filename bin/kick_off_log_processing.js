@@ -55,9 +55,6 @@ var MARLIN_ASSET_KEY = MANOWAR_ASSET_KEY;
 
 /* BEGIN JSSTYLED */
 var ENV_COMMON = 'export PATH=/usr/node/bin:$PATH && \
-export MANTA_USER=' + MANTA_USER + ' && \
-export MARLIN_JOB=$(echo $MANTA_OUTPUT_BASE | cut -d "/" -f 4) && \
-export NOW=$(date "+%Y-%m-%d-%H-%M-%S") && \
 cd /assets/ && tar -xzf ' + MARLIN_PATH_TO_ASSET + ' && cd manowar && \
 ';
 /* END JSSTYLED */
@@ -69,7 +66,7 @@ cd /assets/ && tar -xzf ' + MARLIN_PATH_TO_ASSET + ' && cd manowar && \
 /* BEGIN JSSTYLED */
 function getMapCmd(nReducers, period) {
         return (ENV_COMMON + ' \
-zcat | grep "^{" | bunyan -o json-0 -c "this.audit === true" | \
+zcat | bunyan --strict -o json-0 -c "this.audit === true" | \
   node ./bin/msplit-json-time.js -n ' + nReducers + ' -f time \
     -p ' + period + ' \
 ');
