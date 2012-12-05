@@ -62,15 +62,7 @@ function getSignedUrl(host, path, cb) {
 }
 
 
-
-//--- Main
-
-var port = parseInt(process.argv[2], 10) || DEFAULT_PORT;
-
-var app = express();
-
-//Route first to the ajaxy part
-app.get('/sign/*', function (req, res) {
+function handleSignRequest(req, res) {
         var urlObj = url.parse(req.url, true);
         var urlPath = urlObj.pathname;
 
@@ -121,7 +113,45 @@ app.get('/sign/*', function (req, res) {
                 var mantaUrl = 'https://' + host + resource;
                 res.send(mantaUrl);
         });
-});
+}
+
+
+function audit(req, res, next) {
+        var start = (new Date()).getTime();
+        res.on('finish', function () {
+                var end = (new Date()).getTime();
+                var remoteAddress = req.socket &&
+                        (req.socket.remoteAddress ||
+                         (req.socket.socket &&
+                          req.socket.socket.remoteAddress));
+                var aobj = {
+                        audit: true,
+                        method: req.method,
+                        url: req.url,
+                        start: start,
+                        latency: end - start,
+                        statusCode: res.statusCode,
+                        remoteAddress: remoteAddress,
+                        headers: req.headers
+                };
+                LOG.info(aobj, 'audit');
+        });
+        next();
+}
+
+
+
+//--- Main
+
+var port = parseInt(process.argv[2], 10) || DEFAULT_PORT;
+
+var app = express();
+
+//Audit
+app.use(audit);
+
+//Route first to the ajaxy part
+app.get('/sign/*', handleSignRequest);
 
 //Route everything else to the static directory.
 app.use(express.static(__dirname + '/static'));
