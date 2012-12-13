@@ -70,12 +70,12 @@ host, you can pass a host query parameter:
 
 You can run stream-metrics.js directly on some of the logs in data/ like so:
 
-    bzcat data/logs/muskie/2012/11/13/01/c8aa9a6d.log.bz2 | grep '^{' | bunyan -o json-0 -c 'this.audit === true' | ./bin/stream-metrics.js -p 60 -t time -f latency -f res.statusCode:latency
+    bzcat data/logs/muskie/2012/11/13/01/c8aa9a6d.log.bz2 | bunyan --strict -o json-0 -c 'this.audit === true' | ./bin/stream-metrics.js -p 60 -t time -f latency -f res.statusCode:latency
 
 You can test msplit-json-time by giving the -t option, which will split to files
 in /tmp/msj-test.[reducer].  For example:
 
-    bzcat data/logs/muskie/2012/11/13/01/c8aa9a6d.log.bz2 | grep '^{' | bunyan -o json-0 -c 'this.audit === true' | ./bin/msplit-json-time.js -n 2 -f time -p 300 -t
+    bzcat data/logs/muskie/2012/11/13/01/c8aa9a6d.log.bz2 | bunyan --strict -o json-0 -c 'this.audit === true' | ./bin/msplit-json-time.js -n 2 -f time -p 300 -t
 
     cat /tmp/msj-test.0 | json -a time | cut -c 1-16 | uniq -c
 
@@ -87,8 +87,10 @@ the cli, which produces the same output as the single stream-metrics example
 above:
 
     #Map audit records to files
-    bzcat data/logs/muskie/2012/11/13/01/c8aa9a6d.log.bz2 | grep '^{' | bunyan -o json-0 -c 'this.audit === true' | ./bin/msplit-json-time.js -n 3 -f time -t;
+    bzcat data/logs/muskie/2012/11/13/01/c8aa9a6d.log.bz2 | bunyan --strict -o json-0 -c 'this.audit === true' | ./bin/msplit-json-time.js -n 3 -f time -t;
+
     #Reduce by computing metrics in those files
     for file in `ls /tmp/msj-test.*`; do cat $file | ./bin/stream-metrics.js -p 60 -t time -f latency -f res.statusCode:latency >$file.metrics; done;
+
     #Reduce again to merge.
     cat /tmp/msj-test.*.metrics | ./bin/merge-metrics.js

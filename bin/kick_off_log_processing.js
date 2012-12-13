@@ -55,7 +55,7 @@ var MARLIN_ASSET_KEY = MANOWAR_ASSET_KEY;
 
 /* BEGIN JSSTYLED */
 var ENV_COMMON = 'export PATH=/usr/node/bin:$PATH && \
-cd /assets/ && tar -xzf ' + MARLIN_PATH_TO_ASSET + ' && cd manowar && \
+cd /assets/ && gtar -xzf ' + MARLIN_PATH_TO_ASSET + ' && cd manowar && \
 ';
 /* END JSSTYLED */
 
