@@ -62,6 +62,16 @@ function getSignedUrl(host, path, cb) {
 }
 
 
+//--- Handlers
+
+function handleConfigRequest(req, res) {
+        res.send(JSON.stringify({
+                url: MANTA_URL,
+                user: MANTA_USER
+        }));
+}
+
+
 function handleSignRequest(req, res) {
         var urlObj = url.parse(req.url, true);
         var urlPath = urlObj.pathname;
@@ -150,7 +160,10 @@ var app = express();
 //Audit
 app.use(audit);
 
-//Route first to the ajaxy part
+//Route first to config
+app.get('/config', handleConfigRequest);
+
+//Route second to the ajaxy part
 app.get('/sign/*', handleSignRequest);
 
 //Route everything else to the static directory.

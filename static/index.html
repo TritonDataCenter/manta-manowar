@@ -19,26 +19,38 @@
     <script src="js/rickshaw.js"></script>
 
     <script type="text/javascript">
+      //--- Globals.
+
       var graphs = [];
       var graphNum = 0;
       var dataCache = null; //Gets populated on first populate call.
-      var mantaPrefix = '/poseidon/stor/graphs/data/';
+      var mantaPrefix = null; //Gets populated on page load.
+      var dataPath = '/stor/graphs/data/';
       var selectedGraph = null;
       var graphItButtonEnabled = false;
 
-      //Muck with prototypes...
+
+
+      //--- Muck with prototypes...
+
       if (typeof String.prototype.startsWith != 'function') {
               String.prototype.startsWith = function (str){
-                      return this.slice(0, str.length) === str;
+                      return (this.slice(0, str.length) === str);
               };
       }
 
+
       if (typeof String.prototype.endsWith != 'function') {
               String.prototype.endsWith = function(suffix) {
-                      return this.indexOf(suffix, this.length - suffix.length) !== -1;
+                      return (this.indexOf(suffix, this.length - suffix.length) !== -1);
               };
       }
+
       //Done mucking with prototypes.
+
+
+
+      //--- Helpers
 
       //Janky coming...
       function stringToUTCDate(date) {
@@ -47,6 +59,7 @@
               return (ymd[2] + '-' + ymd[0] + '-' + ymd[1] + 'T' +
                       parts[1] + ':00Z');
       }
+
 
       function getDateParts(ds) {
               var parts = ds.split('T');
@@ -59,9 +72,13 @@
                       hour: timeParts[0],
               });
       }
+
       //End Janky,,,
 
+
+
       //--- Fun with adding data to graphs
+
       function addLineFromPathChooser() {
               var path = document.querySelector('#path_chooser').value;
               var startDate = document.querySelector('#start_date').value;
@@ -120,6 +137,7 @@
               });
       }
 
+
       function fetchPathAndApplyToGraphFunction(path, graph) {
               return (function () {
                       getData({ path: path }, function (err, data) {
@@ -137,6 +155,7 @@
               });
       }
 
+
       function fetchPathsAndApplyToGraph(opts) {
               var paths = opts.paths;
               var graph = opts.graph;
@@ -147,6 +166,7 @@
                       f();
               }
       }
+
 
       function applyObjToGraph(obj, graph) {
               if (graph.period !== obj.period) {
@@ -205,9 +225,11 @@
               giveGraphLegend(graph);
       }
 
+
       function getSelectedGraph() {
-              return selectedGraph;
+              return (selectedGraph);
       }
+
 
       //Takes a path and transforms it to a workable object.
       function pathToObject(path) {
@@ -230,10 +252,13 @@
                       'T' + obj.hour + ':00:00.000Z';
               var date = new Date(dateString);
               obj.startSeconds = date.getTime() / 1000;
-              return obj;
+              return (obj);
       }
 
+
+
       //--- Fun with rendering graphs
+
       function zeroSeries(name, color, units, start, period, numPoints) {
               var points = [];
               for (var i = 0; i < numPoints; ++i) {
@@ -250,11 +275,13 @@
               });
       }
 
+
       function removeGraph(did) {
               var content = document.querySelector('#content');
               var graphdiv = document.querySelector('#' + did);
               content.removeChild(graphdiv);
       }
+
 
       function newGraph(obj) {
               //Create an new div and append to content...
@@ -323,7 +350,7 @@
                               var swatch = '<span class="detail_swatch" style="background-color: ' + series.color + '"></span>';
                               var date = '<span class="date">' + new Date(x * 1000).toString() + '</span>';
                               var content = swatch + series.name + ": " + parseInt(y, 10) + '&nbsp;' + series.units + '<br>' + date;
-                              return content;
+                              return (content);
                       }
               });
 
@@ -337,8 +364,9 @@
 
               makeDraggable();
 
-              return graph;
+              return (graph);
       }
+
 
       function giveGraphLegend(graph) {
               //Need to clear it out or else funky stuff happens...
@@ -354,6 +382,7 @@
                       legend: legend
               });
       }
+
 
       function makeDraggable() {
               //jquery I pulled from the sortable demo
@@ -371,7 +400,10 @@
               });
       }
 
+
+
       //--- Fun with getting data from Manta
+
       function getMantaData(path, cb) {
               if (!path) {
                       alert('getData called without a path');
@@ -423,6 +455,7 @@
               });
       }
 
+
       function listMantaDir(path, cb) {
               getMantaData(path, function (err, data) {
                       if (err) {
@@ -446,10 +479,12 @@
               });
       }
 
+
       //--- Fun with the data cache
+
       function getData(opts, cb) {
               if (!opts.path) {
-                      return null;
+                      return (null);
               }
               var obj = getFromDataCache(opts.path);
               if (obj) {
@@ -459,19 +494,21 @@
               }
       }
 
+
       function getFromDataCache(path) {
               if (path === null || dataCache === null) {
-                      return null;
+                      return (null);
               }
               var location = dataCache;
               for (var i = 0; i < path.length; ++i) {
                       if (!location[path[i]]) {
-                              return null;
+                              return (null);
                       }
                       location = location[path[i]];
               }
-              return location;
+              return (location);
       }
+
 
       //Recursively fetches data down a path, caching along the way.
       function getAndCache(opts, cb) {
@@ -481,8 +518,8 @@
               var depth = opts.depth || 0;
 
               //Files are located at:
-              // /poseidon/stor/graphs/data/[service]/[year]/[month]/[day]/[hour]/[period].data
-              // So... parts array matches:0         1      2       3     4      5
+              // /$MANTA_USER/stor/graphs/data/[service]/[year]/[month]/[day]/[hour]/[period].data
+              // So... parts array matches:    0         1      2       3     4      5
 
               //This will break if we put data in other places.  It should
               //probably be smarter and see if the above directory is 'data'
@@ -580,7 +617,10 @@
 
       }
 
+
+
       //--- Fun with autocompletion
+
       function findLatestMetricsPath(opts, cb) {
               var service = opts.service;
               var cPath = opts.currentPath || [ service ];
@@ -641,6 +681,7 @@
               });
       }
 
+
       function autocompletePath(request, response) {
               var term = request.term;
               var pathParts = term.split('/');
@@ -655,7 +696,7 @@
 
               //We hide the details of how we implement autocomplete... but
               // in manta the data is stored under:
-              // /poseidon/stor/graphs/data/[service]/[year]/[month]/[day]/[hour]/[period].data
+              // /$MANTA_USER/stor/graphs/data/[service]/[year]/[month]/[day]/[hour]/[period].data
               // We want the path that people type in to be:
               // service/metric/stat
               // So we list the services when there are no path separators,
@@ -756,6 +797,8 @@
               }
       }
 
+
+      //Turn on autocomplete.
       $(function () {
               //Turn on autocompletion for the path
               $('#path_chooser').autocomplete({
@@ -829,18 +872,23 @@
               });
       });
 
+
+
       //--- Fun with the graphit button
+
       function disableGraphIt() {
               var graphButton = document.querySelector('#graph_it');
               document.getElementById("graph_it").className = 'grey-graph-it';
               graphItButtonEnabled = false;
       }
 
+
       function enableGraphIt() {
               var graphButton = document.querySelector('#graph_it');
               document.getElementById("graph_it").className = 'green-graph-it';
               graphItButtonEnabled = true;
       }
+
 
       //Since the autocomplete thing is 'magic' and sometimes doesn't enable
       // the graphit button we're doing this hacky thing instead...
@@ -862,10 +910,13 @@
               testEnableGraphItButton();
       });
 
+
+
       //--- Fun with dialogues... I was using the JQuery UI dialog and
       // tooltips, but the tooltips weren't reappearing on show and
       // the dialog was stealing focus... so I made my own.  Sad but
       // true.
+
       //Increase the default animation speed to exaggerate the effect
       $.fx.speeds._default = 250;
       $(function() {
@@ -877,6 +928,7 @@
               });
       });
 
+
       function showStatusDialog(html, closeSoon) {
               $('#status_dialog')[0].innerHTML = html;
               $('#status_dialog').slideDown();
@@ -885,20 +937,30 @@
               }
       }
 
+
       function hideStatusDialog() {
               $('#status_dialog').slideUp();
       }
 
+
+
       //--- Fun with the override
+
       function overrideUpdated() {
               saveConfig();
               testMantaConnection();
       }
 
+
       //--- Fun with saving/restoring config
+
+      //This really should be located with all the other global vars up top
+      // but I really wanted it to be close to these two functions...
       var fieldsToSave = [
               'manta_host'
       ];
+
+
       function saveConfig() {
               var config = {};
               for (var i = 0; i < fieldsToSave.length; ++i) {
@@ -910,16 +972,43 @@
               localStorage['config'] = cs;
       }
 
-      function loadConfig() {
-              if (!localStorage['config']) {
-                      return;
+
+      function loadConfig(cb) {
+              function gotError(xhr, err) {
+                      showStatusDialog('Error fetching config from server.');
+                      cb(err);
               }
-              var cs = localStorage['config'];
-              var config = JSON.parse(cs);
-              for (var key in config) {
-                      document.querySelector('#' + key).value = config[key];
+
+              function gotConfig(configString, status) {
+                      var c = JSON.parse(configString);
+
+                      //Figure out the prefix from the user the server
+                      // is serving up.
+                      mantaPrefix = '/' + c.user + dataPath;
+
+                      //Loal user config from localstorage...
+                      if (!localStorage['config']) {
+                              return;
+                      }
+                      var cs = localStorage['config'];
+                      var config = JSON.parse(cs);
+                      for (var key in config) {
+                              document.querySelector('#' + key).value =
+                                      config[key];
+                      }
+                      cb(null);
               }
+
+              //Load config from server...
+              $.ajax({
+                      url: '/config',
+                      dataType: 'text',
+                      success: gotConfig,
+                      error: gotError
+              });
+
       }
+
 
       function testMantaConnection() {
               showStatusDialog('\
@@ -962,10 +1051,13 @@
               });
       }
 
+
       //--- Onload
-      $(function () {
-              loadConfig();
-              testMantaConnection();
+
+      $(document).ready(function () {
+              loadConfig(function () {
+                      testMantaConnection();
+              });
       });
     </script>
   </head>

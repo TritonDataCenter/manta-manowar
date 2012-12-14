@@ -1,0 +1,6 @@
+{
+  "past_hours_to_scan": 3,
+  "services": {
+    "manowar": [ "latency", "statusCode:latency" ]
+  }
+}

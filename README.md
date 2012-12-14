@@ -19,7 +19,7 @@ for dashboards.  See docs/index.restdown for more information.
                     here. See "node_modules/" for node.js deps.
     docs/           Project docs (restdown)
     lib/            Source files.
-    node_modules/   Node.js deps, either populated at build time or commited.
+    node_modules/   Node.js deps, either populated at build time or committed.
                     See Managing Dependencies.
     pkg/            Package lifecycle scripts
     test/           Test suite (using node-tap)
@@ -31,9 +31,7 @@ for dashboards.  See docs/index.restdown for more information.
 
 # Development
 
-TODO: Update me.
-
-To run the boilerplate API server:
+To run the manowar server:
 
     git clone git@git.joyent.com:eng.git
     cd eng
@@ -48,36 +46,96 @@ Before committing/pushing run `make prepush` and, if possible, get a code
 review.
 
 
+# Getting Started
 
-# Testing
+To get Man O' War running locally, you can either run Manta compute jobs to get
+logs transformed or transform the data locally.  First, set up your environment
+by setting the MANTA_* environment variables and verifying that the m* tools
+(mls, mput, etc.) are on your $PATH.  See the `node-manta.git` documentation for
+more information.  Don't forget to install:
+
+    npm install
+
+Finally, you will also need to create a manta client configuration
+that is used by both the script that kicks off compute jobs and the server.  The
+template is as follows:
+
+    echo '{
+        "manta": {
+            "connectTimeout": 1000,
+            "retry": {
+                "attempts": 5,
+                "minTimeout": 1000
+            },
+            "sign": {
+                "key": "$MANTA_PATH_TO_PRIVATE_KEY",
+                "keyId": "$MANTA_KEY_ID"
+            },
+            "url": "$MANTA_URL",
+            "user": "$MANTA_USER"
+        }
+    }' >/tmp/manta.config.json
+
+To have Manta compute transform the sample logs, first upload the data to the
+correct location, create a local tar of manowar to be used as the asset, then
+kick off two jobs to transform the data:
+
+    ./bin/upload_test_data.sh
+    tar --exclude data/* --exclude static/* -chzf /tmp/manowar.tar.gz ../manowar
+    MANTA_CONFIG=/tmp/manta.config.json \
+        MANOWAR_CONFIG=./etc/manowar.test.config.json \
+        MANOWAR_CODE_BUNDLE=/tmp/manowar.tar.gz \
+        ./bin/kick_off_log_processing.js -p /2012/12/11/21 -p /2012/12/11/22
+
+To transform and upload the data directly, after setting up your environment
+(setting the MANTA_* env variables), run:
+
+    ./bin/upload_transformed_test_data.sh
+
+Once you have the transformed data in manta then run the server:
+
+    MANTA_CONFIG=/tmp/manta.config.json node ./server.js | bunyan
+
+Once the server is running, point a browser at:
+
+    http://localhost:8080
+
+Once it loads:
+
+- You should see the status drop-down on the right testing the manta connection
+  and giving notice when the UI has a successful CORS request to Manta.
+- Type 'm' in the path field.  You should see the autocomplete drop down
+  with `manowar`.
+- Once you select `manowar` you should see the status drop-down on the right
+  searching Manta for autocomplete data.  Once the directories have been walked
+  you should see a drop down listing, among other entries, `manowar/latency`.
+  Once chosen you should see a drop down listing, among other entries,
+  `manowar/latency/n`.  This can also be typed in manually.
+- Enter start date: `12/11/2012 21:00`
+- Enter end date: `12/11/2012 23:00`
+- The `Graph It!` button should turn green.  Click it and see the graph.
+
+# Local Testing
 
     make test
 
-If you set up your MANTA_* environment variables and have node-manta on your
-path, you can upload the data under the "data" directory by running:
+If you're running the server and followed the instructions to get test data
+uploaded to Manta, you can run this to verify that the signing portion of the
+server works:
 
-    ./bin/upload_test_data.sh
-
-Then if you're running the server you can run this to verify that the signing
-portion of the server works:
-
-    curl http://localhost:8080/sign/poseidon/stor/graphs/data/muskie/2012/11/13/01/60.data | xargs -i curl -v -k "{}"
-
-If you're running on coal and you need to have a request signed for a different
-host, you can pass a host query parameter:
-
-    curl http://localhost:8080/sign/poseidon/stor/graphs/data/muskie/2012/11/13/01/60.data?host=$(coal_manta_ip.sh) | xargs -i curl -v -k "{}"
+    curl http://localhost:8080/sign/$MANTA_USER/stor/graphs/data/manowar/2012/12/11/21/60.data | xargs -i curl -v -k "{}"
 
 You can run stream-metrics.js directly on some of the logs in data/ like so:
 
-    bzcat data/logs/muskie/2012/11/13/01/c8aa9a6d.log.bz2 | bunyan --strict -o json-0 -c 'this.audit === true' | ./bin/stream-metrics.js -p 60 -t time -f latency -f res.statusCode:latency
+    zcat data/logs/manowar/2012/12/11/21/14e223c3.log.gz | bunyan --strict -o json-0 -c 'this.audit === true' | ./bin/stream-metrics.js -p 60 -t time -f latency -f statusCode:latency
 
 You can test msplit-json-time by giving the -t option, which will split to files
 in /tmp/msj-test.[reducer].  For example:
 
-    bzcat data/logs/muskie/2012/11/13/01/c8aa9a6d.log.bz2 | bunyan --strict -o json-0 -c 'this.audit === true' | ./bin/msplit-json-time.js -n 2 -f time -p 300 -t
+    zcat data/logs/manowar/2012/12/11/21/14e223c3.log.gz | bunyan --strict -o json-0 -c 'this.audit === true' | ./bin/msplit-json-time.js -n 2 -f time -p 300 -t
 
     cat /tmp/msj-test.0 | json -a time | cut -c 1-16 | uniq -c
+    cat /tmp/msj-test.1 | json -a time | cut -c 1-16 | uniq -c
 
 Will show that the records were separated into different files but grouped by
 time.
@@ -87,10 +145,10 @@ the cli, which produces the same output as the single stream-metrics example
 above:
 
     #Map audit records to files
-    bzcat data/logs/muskie/2012/11/13/01/c8aa9a6d.log.bz2 | bunyan --strict -o json-0 -c 'this.audit === true' | ./bin/msplit-json-time.js -n 3 -f time -t;
+    zcat data/logs/manowar/2012/12/11/21/14e223c3.log.gz | bunyan --strict -o json-0 -c 'this.audit === true' | ./bin/msplit-json-time.js -n 3 -f time -t;
 
     #Reduce by computing metrics in those files
-    for file in `ls /tmp/msj-test.*`; do cat $file | ./bin/stream-metrics.js -p 60 -t time -f latency -f res.statusCode:latency >$file.metrics; done;
+    for file in `ls /tmp/msj-test.*`; do cat $file | ./bin/stream-metrics.js -p 60 -t time -f latency -f statusCode:latency >$file.metrics; done;
 
     #Reduce again to merge.
     cat /tmp/msj-test.*.metrics | ./bin/merge-metrics.js

@@ -1,22 +1,19 @@
 #!/usr/bin/bash
+###############################################################################
+# This script will upload test data in the correct location.
+#
+# Before running, make sure you've initialized your environment to run
+# m* commands (mls, mmkdir, etc).
+###############################################################################
 
 : ${MANTA_URL?"MANTA_URL isn't set"}
 
-TMP_FILE=/tmp/manowar_test_data
-
 for file in `find data/logs -type f`; do
-    ROOT_DIR=/$MANTA_USER/stor/graphs
-    DIR=$ROOT_DIR/data/$(dirname $file | perl -ne 's/data\/logs\///g; print;')
-    MANTA_OBJECT=$DIR/60.data
+    ROOT_DIR=/$MANTA_USER/stor/logs
+    MANTA_OBJECT=$ROOT_DIR/$(echo $file | perl -ne 's/data\/logs\///g; print;')
+    DIR=$(dirname $MANTA_OBJECT)
     echo $MANTA_OBJECT
 
-    bzcat $file | grep '^{' | bunyan -o json-0 -c 'this.audit === true' | \
-        ./bin/stream-metrics.js -p 60 -t time -f latency -f res.statusCode:latency \
-        >$TMP_FILE
-
-    mmkdir $ROOT_DIR
-    mmkdir -H 'Access-Control-Allow-Origin: *' -p $DIR
-    mput -H 'Access-Control-Allow-Origin: *' -f $TMP_FILE $MANTA_OBJECT
+    mmkdir -p $DIR
+    mput -f $file $MANTA_OBJECT
 done
-
-rm -rf $TMP_FILE

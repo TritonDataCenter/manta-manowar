@@ -54,7 +54,7 @@ var MARLIN_ASSET_KEY = MANOWAR_ASSET_KEY;
 ///--- Marlin Commands
 
 /* BEGIN JSSTYLED */
-var ENV_COMMON = 'export PATH=/usr/node/bin:$PATH && \
+var ENV_COMMON = ' \
 cd /assets/ && gtar -xzf ' + MARLIN_PATH_TO_ASSET + ' && cd manowar && \
 ';
 /* END JSSTYLED */
@@ -102,6 +102,18 @@ function ifError(err, msg) {
                 LOG.error(err, msg);
                 process.exit(1);
         }
+}
+
+
+function objectInfo(objName, cb) {
+        MANTA_CLIENT.info(objName, {}, function (err, info) {
+                if (err) {
+                        cb(err);
+                        return;
+                }
+
+                cb(null, info);
+        });
 }
 
 
@@ -274,8 +286,6 @@ function createLogProcessingJobAndRecord(opts, cb) {
         var hourPath = opts.hourPath;
 
         //Add other, relevant job information....
-        opts.outputDir = MANOWAR_DATA_DIR + '/' + service + hourPath;
-        opts.outputObject = opts.outputDir + '/' + opts.period + '.data';
         opts.jobName = JOB_PREFIX + service + hourPath;
 
         LOG.info({ opts: opts }, 'setting up log processing job');
@@ -307,6 +317,40 @@ function createLogProcessingJobAndRecord(opts, cb) {
 }
 
 
+function checkLogsAlreadyProcessed(opts, cb) {
+        //See what logs have been processed
+        getObject(opts.recordObject, function (err, data) {
+                if (err && err.code !== 'ResourceNotFound') {
+                        cb(err);
+                }
+
+                var jobInfo = {};
+                if (data) {
+                        jobInfo = JSON.parse(data);
+                }
+
+                var logListEqual = jobInfo.objects &&
+                        arraysEqual(jobInfo.objects, opts.objects);
+
+                if (!logListEqual) {
+                        cb(err, false);
+                        return;
+                }
+
+                //Verify the data file is there as well...
+                objectInfo(opts.outputObject, function (err1, info) {
+                        if (err1 && err1.code !== 'NotFoundError') {
+                                cb(err1);
+                                return;
+                        }
+
+                        cb(null, logListEqual && info);
+                });
+
+        });
+}
+
+
 function makeServiceJob(opts, cb) {
         assert.string(opts.service);
         assert.string(opts.hourPath);
@@ -317,6 +361,7 @@ function makeServiceJob(opts, cb) {
         //Get all logs
         var mpath = MANTA_LOG_DIR + '/' + service + hourPath;
 
+        //Get the list of log files...
         getObjectsInDir(mpath, function (err, objs) {
                 if (err && err.code === 'ResourceNotFound') {
                         LOG.info({ path: mpath },
@@ -328,42 +373,44 @@ function makeServiceJob(opts, cb) {
                         return;
                 }
 
-                //Get the list of files...
+                //Set up additional opts arguments...
                 opts.recordPath = MANOWAR_PROCESSED_DIR + '/' + service +
                         hourPath;
                 opts.recordObject = opts.recordPath + '/job_info.json';
                 opts.objects = objs;
                 opts.objects.sort();
+                opts.outputDir = MANOWAR_DATA_DIR + '/' + service + hourPath;
+                opts.outputObject = opts.outputDir + '/' +
+                        opts.period + '.data';
 
-                //See what logs have been processed
-                getObject(opts.recordObject, function (err1, data) {
-                        if (err1 && err1.code !== 'ResourceNotFound') {
-                                cb(err1);
+
+                checkLogsAlreadyProcessed(opts, function (err2, processed) {
+                        if (err2) {
+                                cb(err2);
+                                return;
                         }
 
-                        var jobInfo = {};
-                        if (data) {
-                                jobInfo = JSON.parse(data);
-                        }
-
-                        //Kick out if the same set of files was already
-                        // processed.
-                        if (!opts.forceReprocess && jobInfo.objects &&
-                            arraysEqual(jobInfo.objects, opts.objects)) {
+                        if (processed && !opts.forceReprocess) {
                                 LOG.info({
                                         opts: opts
-                                }, 'Already processed set of objects.' +
-                                         '  continuing...');
+                                }, 'Already processed data.');
                                 cb();
                                 return;
                         }
 
+                        LOG.info({
+                                outputObject: opts.outputObject
+                        }, 'Creating job to produce output.');
+
                         //Now kick off a job to process the files...
-                        createLogProcessingJobAndRecord(opts, function (err2) {
-                                cb(err2);
+                        createLogProcessingJobAndRecord(opts, function (err3) {
+                                if (err3) {
+                                        cb(err3);
+                                        return;
+                                }
+                                cb();
                         });
                 });
-
         });
 }
 
@@ -384,7 +431,7 @@ function startJobs(config) {
                                 period: 60,
                                 forceReprocess: forceReprocess
                         }, function (err) {
-                                ifError(err, 'Error making service job for ' +
+                                ifError(err, 'Error making service job for' +
                                         ' service: ' + service +
                                         ' using path: ' + hourPath);
                         });
@@ -462,6 +509,7 @@ function usage(msg) {
 ///--- Main
 
 var _opts = parseOptions();
+LOG.info({ options: _opts }, 'Parsed Options');
 var _config = null;
 try {
         var configString = fs.readFileSync(MANOWAR_CONFIG_FILE);
@@ -505,13 +553,14 @@ if (_opts.hourPaths.length > 0) {
                  'scanning past hours');
         _config.hourPaths = _hourPaths;
 }
-LOG.info({ hourPaths: _hourPaths }, 'scanning past hours');
+LOG.info({ hourPaths: _hourPaths }, 'hour paths to process');
 
 if (_opts.forceReprocess) {
         _config.forceReprocess = true;
 }
 
 //First upload the bundle, then kick off the jobs...
+LOG.info({ assetDir: MANOWAR_ASSET_DIR }, 'Making asset dir.');
 MANTA_CLIENT.mkdirp(MANOWAR_ASSET_DIR, function (_err) {
         ifError(_err);
 
@@ -534,6 +583,11 @@ MANTA_CLIENT.mkdirp(MANOWAR_ASSET_DIR, function (_err) {
                 var p = MANOWAR_ASSET_KEY;
                 s.pause();
                 s.on('open', function () {
+                        LOG.info({
+                                assetKey: MANOWAR_ASSET_KEY,
+                                file: MANOWAR_CODE_BUNDLE,
+                                opts: o
+                        }, 'Uploading asset bundle...');
                         MANTA_CLIENT.put(p, s, o, function (_e) {
                                 ifError(_e);
                                 LOG.info({ obj: MANOWAR_CODE_BUNDLE },
