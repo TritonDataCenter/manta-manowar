@@ -322,6 +322,7 @@ function checkLogsAlreadyProcessed(opts, cb) {
         getObject(opts.recordObject, function (err, data) {
                 if (err && err.code !== 'ResourceNotFound') {
                         cb(err);
+                        return;
                 }
 
                 var jobInfo = {};
@@ -333,7 +334,7 @@ function checkLogsAlreadyProcessed(opts, cb) {
                         arraysEqual(jobInfo.objects, opts.objects);
 
                 if (!logListEqual) {
-                        cb(err, false);
+                        cb(null, false);
                         return;
                 }
 
