@@ -18,7 +18,7 @@ for file in `find data/logs -type f`; do
 
     zcat $file | bunyan --strict -o json-0 -c 'this.audit === true' | \
         ./bin/stream-metrics.js -p 60 -t time -f latency \
-            -f res.statusCode:latency \
+            -f statusCode:latency \
         >$TMP_FILE
 
     #.../graphs shouldn't have CORS headers since it will contain

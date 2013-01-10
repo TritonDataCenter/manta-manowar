@@ -66,7 +66,7 @@ cd /assets/ && gtar -xzf ' + MARLIN_PATH_TO_ASSET + ' && cd manowar && \
 /* BEGIN JSSTYLED */
 function getMapCmd(nReducers, period) {
         return (ENV_COMMON + ' \
-zcat | bunyan --strict -o json-0 -c "this.audit === true" | \
+bunyan --strict -o json-0 -c "this.audit === true" | \
   node ./bin/msplit-json-time.js -n ' + nReducers + ' -f time \
     -p ' + period + ' \
 ');

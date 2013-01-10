@@ -85,7 +85,8 @@ kick off two jobs to transform the data:
     MANTA_CONFIG=/tmp/manta.config.json \
         MANOWAR_CONFIG=./etc/manowar.test.config.json \
         MANOWAR_CODE_BUNDLE=/tmp/manowar.tar.gz \
-        ./bin/kick_off_log_processing.js -p /2012/12/11/21 -p /2012/12/11/22
+        ./bin/kick_off_log_processing.js -p /2012/12/11/21 -p /2012/12/11/22 | \
+        bunyan
 
 To transform and upload the data directly, after setting up your environment
 (setting the MANTA_* env variables), run:
