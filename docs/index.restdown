@@ -91,6 +91,21 @@ You're done.  Now wait for your service to produce metrics:
 Then pull up the manowar page in a browser and search for your service.  The
 server is hosted on on the ops zone in Manta on port 80.
 
+# Backfilling graphs for your service
+
+If you already have logs uploaded and need to backfill or force a job to rerun:
+
+1. Log into the ops zone
+2. `/opt/smartdc/manowar/bin/kick_off_log_processing.js -p [hour path]`
+
+Where `[hour path]` is of the form:
+
+    /[year]/[month]/[day]/[hour]
+
+Use the `-f` flag to force a job rerun.  For example:
+
+    /opt/smartdc/manowar/bin/kick_off_log_processing.js -p /2012/11/05/10 -f
+
 # Design
 
 Man O' War requires services and processes to generate logs with `audit` fields.
