@@ -35,7 +35,7 @@ SMF_MANIFESTS_IN = smf/manifests/manowar.xml.in
 # Variables
 #
 NAME                  = manowar
-NODE_PREBUILT_VERSION = v0.8.12
+NODE_PREBUILT_VERSION = v0.8.18
 NODE_PREBUILT_TAG     = zone
 
 
