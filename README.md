@@ -130,13 +130,14 @@ You can run stream-metrics.js directly on some of the logs in data/ like so:
 
     zcat data/logs/manowar/2012/12/11/21/14e223c3.log.gz | bunyan --strict -o json-0 -c 'this.audit === true' | ./bin/stream-metrics.js -p 60 -t time -f latency -f statusCode:latency
 
-You can test msplit-json-time by giving the -t option, which will split to files
-in /tmp/msj-test.[reducer].  For example:
+Assuming that you have the marlin command msplit, you can test it by giving
+the -t option, which will split to files in /var/tmp/msplit.pid.[reducer].  For
+example:
 
-    zcat data/logs/manowar/2012/12/11/21/14e223c3.log.gz | bunyan --strict -o json-0 -c 'this.audit === true' | ./bin/msplit-json-time.js -n 2 -f time -p 300 -t
+    zcat data/logs/manowar/2012/12/11/21/14e223c3.log.gz | bunyan --strict -o json-0 -c 'this.audit === true' | msplit -j -n 2 -e 'var t = (new Date(time)).getTime(); (t - (t % (300 * 1000)))' -t
 
-    cat /tmp/msj-test.0 | json -a time | cut -c 1-16 | uniq -c
-    cat /tmp/msj-test.1 | json -a time | cut -c 1-16 | uniq -c
+    cat /var/tmp/msplit.*.0 | json -ga time | cut -c 1-16 | uniq -c
+    cat /var/tmp/msplit.*.1 | json -ga time | cut -c 1-16 | uniq -c
 
 Will show that the records were separated into different files but grouped by
 time.
@@ -146,10 +147,10 @@ the cli, which produces the same output as the single stream-metrics example
 above:
 
     #Map audit records to files
-    zcat data/logs/manowar/2012/12/11/21/14e223c3.log.gz | bunyan --strict -o json-0 -c 'this.audit === true' | ./bin/msplit-json-time.js -n 3 -f time -t;
+    zcat data/logs/manowar/2012/12/11/21/14e223c3.log.gz | bunyan --strict -o json-0 -c 'this.audit === true' | msplit -j -n 2 -e 'var t = (new Date(time)).getTime(); (t - (t % (300 * 1000)))' -t
 
     #Reduce by computing metrics in those files
-    for file in `ls /tmp/msj-test.*`; do cat $file | ./bin/stream-metrics.js -p 60 -t time -f latency -f statusCode:latency >$file.metrics; done;
+    for file in `ls /tmp/msplit.*`; do cat $file | ./bin/stream-metrics.js -p 60 -t time -f latency -f statusCode:latency >$file.metrics; done;
 
     #Reduce again to merge.
-    cat /tmp/msj-test.*.metrics | ./bin/merge-metrics.js
+    cat /tmp/msplit.*.metrics | ./bin/merge-metrics.js

@@ -65,10 +65,13 @@ cd /assets/ && gtar -xzf ' + MARLIN_PATH_TO_ASSET + ' && cd manowar && \
 
 /* BEGIN JSSTYLED */
 function getMapCmd(nReducers, period) {
+        //This will bucketize the time field into minutely records based on the
+        // time field of the audit record.
+        var msplitExec = '\'var t = (new Date(time)).getTime(); \
+"" + (t - (t % (' + period + ' * 1000)))\'';
         return (ENV_COMMON + ' \
 bunyan --strict -o json-0 -c "this.audit === true" | \
-  node ./bin/msplit-json-time.js -n ' + nReducers + ' -f time \
-    -p ' + period + ' \
+  msplit -n ' + nReducers + ' -j -e ' + msplitExec + ' \
 ');
 }
 /* END JSSTYLED */
