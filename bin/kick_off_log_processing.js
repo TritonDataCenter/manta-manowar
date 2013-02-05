@@ -97,14 +97,6 @@ node ./bin/merge-metrics.js | \
 /* END JSSTYLED */
 
 
-function ifError(err, msg) {
-        if (err) {
-                LOG.error(err, msg);
-                process.exit(1);
-        }
-}
-
-
 function objectInfo(objName, cb) {
         MANTA_CLIENT.info(objName, {}, function (err, info) {
                 if (err) {
@@ -120,7 +112,10 @@ function objectInfo(objName, cb) {
 function getObjectsInDir(dir, cb) {
         var keys = [];
         MANTA_CLIENT.ls(dir, {}, function (err, res) {
-                ifError(err);
+                if (err) {
+                        cb(err);
+                        return;
+                }
 
                 res.on('object', function (obj) {
                         keys.push(dir + '/' + obj.name);
@@ -225,7 +220,10 @@ function createDataGenMarlinJob(opts, cb) {
         LOG.info({ job: job }, 'Marlin Job Definition');
 
         MANTA_CLIENT.createJob(job, function (err, jobId) {
-                ifError(err);
+                if (err) {
+                        cb(err);
+                        return;
+                }
 
                 LOG.info({ jobId: jobId }, 'Created Job.');
                 var aopts = {
@@ -235,7 +233,10 @@ function createDataGenMarlinJob(opts, cb) {
 
                 //Add keys to job...
                 MANTA_CLIENT.addJobKey(jobId, objs, aopts, function (err2) {
-                        ifError(err2);
+                        if (err2) {
+                                cb(err2);
+                                return;
+                        }
 
                         LOG.info({
                                 objs: objs,
@@ -282,20 +283,20 @@ function createLogProcessingJobAndRecord(opts, cb) {
         assert.arrayOfString(opts.objects);
         assert.arrayOfString(opts.fields);
 
-        var service = opts.service;
-        var hourPath = opts.hourPath;
-
-        //Add other, relevant job information....
-        opts.jobName = JOB_PREFIX + service + hourPath;
-
         LOG.info({ opts: opts }, 'setting up log processing job');
 
         //Make sure output dirs exist, create them if not...
         createOutputDirs(opts, function (err) {
-                ifError(err, 'Error creating output directories');
+                if (err) {
+                        cb(err);
+                        return;
+                }
 
                 createDataGenMarlinJob(opts, function (err2, jobId) {
-                        ifError(err2);
+                        if (err2) {
+                                cb(err2);
+                                return;
+                        }
 
                         //Record the job information in Manta...
                         opts.jobId = jobId;
@@ -359,6 +360,19 @@ function makeServiceJob(opts, cb) {
         var service = opts.service;
         var hourPath = opts.hourPath;
 
+        //Return if a job is already running with that name.
+        var jobName = JOB_PREFIX + service + hourPath;
+        opts.jobName = jobName;
+
+        if (opts.jobs[jobName] !== undefined) {
+                var j = opts.jobs[jobName];
+                LOG.info({ jobName: jobName, id: j.id },
+                         'Job already running.  Not starting another with ' +
+                         'the same name.  Continuing...');
+                cb();
+                return;
+        }
+
         //Get all logs
         var mpath = MANTA_LOG_DIR + '/' + service + hourPath;
 
@@ -416,28 +430,130 @@ function makeServiceJob(opts, cb) {
 }
 
 
-function startJobs(config) {
-        for (var service in config.services) {
-                var fields = config.services[service];
-                LOG.info({ service: service, fields: fields },
-                         'getting jobs going for service');
-
-                for (var i = 0; i < config.hourPaths.length; ++i) {
-                        var hourPath = config.hourPaths[i];
-                        var forceReprocess = config.forceReprocess;
-                        makeServiceJob({
-                                service: service,
-                                hourPath: hourPath,
-                                fields: fields,
-                                period: 60,
-                                forceReprocess: forceReprocess
-                        }, function (err) {
-                                ifError(err, 'Error making service job for' +
-                                        ' service: ' + service +
-                                        ' using path: ' + hourPath);
-                        });
+function startJobs(config, cb) {
+        getCurrentJobs(function (err, jobs) {
+                if (err) {
+                        cb(err);
+                        return;
                 }
-        }
+                config.jobs = jobs;
+
+                var inProgress = 0;
+
+                function tryEnd() {
+                        if (inProgress === 0) {
+                                cb();
+                        }
+                }
+
+                for (var service in config.services) {
+                        var fields = config.services[service];
+                        LOG.info({ service: service, fields: fields },
+                                 'getting jobs going for service');
+
+                        for (var i = 0; i < config.hourPaths.length; ++i) {
+                                var hourPath = config.hourPaths[i];
+                                var forceReprocess = config.forceReprocess;
+                                ++inProgress;
+                                makeServiceJob({
+                                        service: service,
+                                        hourPath: hourPath,
+                                        fields: fields,
+                                        period: 60,
+                                        forceReprocess: forceReprocess,
+                                        jobs: jobs
+                                }, function (err2) {
+                                        if (err2) {
+                                                cb(err);
+                                                return;
+                                        }
+                                        --inProgress;
+                                        tryEnd();
+                                });
+                        }
+                }
+        });
+}
+
+
+function getCurrentJobs(cb) {
+        var jobs = {};
+        MANTA_CLIENT.listJobs({
+                query: {
+                        state: 'running'
+                }
+        }, function (err, res) {
+                if (err) {
+                        cb(err);
+                        return;
+                }
+
+                res.on('error', function (err2) {
+                        cb(err2);
+                });
+
+                res.on('job', function (job) {
+                        //Yes, possible for there to be
+                        // multiple jobs with the same name.
+                        jobs[job.name] = job;
+                });
+
+                res.once('end', function () {
+                        LOG.info({ jobs: jobs }, 'Current jobs.');
+                        cb(null, jobs);
+                });
+        });
+}
+
+
+function uploadBundle(config, cb) {
+        LOG.info({ assetDir: MANOWAR_ASSET_DIR }, 'Making asset dir.');
+        MANTA_CLIENT.mkdirp(MANOWAR_ASSET_DIR, function (err) {
+                if (err) {
+                        cb(err);
+                        return;
+                }
+
+                //Upload the bundle to manta
+                fs.stat(MANOWAR_CODE_BUNDLE, function (err2, stats) {
+                        if (err2) {
+                                cb(err2);
+                                return;
+                        }
+
+                        if (!stats.isFile()) {
+                                LOG.error(MANOWAR_CODE_BUNDLE +
+                                          ' isnt a file');
+                                process.exit(1);
+                        }
+
+                        var o = {
+                                copies: 2,
+                                size: stats.size
+                        };
+
+                        var s = fs.createReadStream(MANOWAR_CODE_BUNDLE);
+                        var p = MANOWAR_ASSET_KEY;
+                        s.pause();
+                        s.on('open', function () {
+                                LOG.info({
+                                        assetKey: MANOWAR_ASSET_KEY,
+                                        file: MANOWAR_CODE_BUNDLE,
+                                        opts: o
+                                }, 'Uploading asset bundle...');
+                                MANTA_CLIENT.put(p, s, o, function (_e) {
+                                        if (_e) {
+                                                cb(_e);
+                                                return;
+                                        }
+                                        LOG.info({ obj: MANOWAR_CODE_BUNDLE },
+                                                 'uploaded asset bundle');
+                                        cb();
+                                });
+                        });
+                });
+        });
+
 }
 
 
@@ -560,41 +676,18 @@ if (_opts.forceReprocess) {
         _config.forceReprocess = true;
 }
 
-//First upload the bundle, then kick off the jobs...
-LOG.info({ assetDir: MANOWAR_ASSET_DIR }, 'Making asset dir.');
-MANTA_CLIENT.mkdirp(MANOWAR_ASSET_DIR, function (_err) {
-        ifError(_err);
+uploadBundle(_opts, function (err) {
+        if (err) {
+                LOG.error('Error uploading bundle.');
+                process.exit(1);
+        }
 
-        //Upload the bundle to manta
-        fs.stat(MANOWAR_CODE_BUNDLE, function (_err2, stats) {
-                ifError(_err2);
-
-                if (!stats.isFile()) {
-                        LOG.error(MANOWAR_CODE_BUNDLE +
-                                      ' isnt a file');
+        startJobs(_config, function (err2) {
+                if (err2) {
+                        LOG.fatal(err2);
                         process.exit(1);
                 }
-
-                var o = {
-                        copies: 2,
-                        size: stats.size
-                };
-
-                var s = fs.createReadStream(MANOWAR_CODE_BUNDLE);
-                var p = MANOWAR_ASSET_KEY;
-                s.pause();
-                s.on('open', function () {
-                        LOG.info({
-                                assetKey: MANOWAR_ASSET_KEY,
-                                file: MANOWAR_CODE_BUNDLE,
-                                opts: o
-                        }, 'Uploading asset bundle...');
-                        MANTA_CLIENT.put(p, s, o, function (_e) {
-                                ifError(_e);
-                                LOG.info({ obj: MANOWAR_CODE_BUNDLE },
-                                         'uploaded asset bundle');
-                                startJobs(_config);
-                        });
-                });
+                LOG.info('Jobs Started.');
+                process.exit(0);
         });
 });

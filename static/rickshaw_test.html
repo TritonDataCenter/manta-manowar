@@ -143,6 +143,28 @@
     </script>
     </div>
 
+    <!-- Null Y Values? -->
+    Null Y Values (Bad - interprets as 0):<br>
+    <div id="nullYValues"/>
+    <script type="text/javascript">
+      function nullYValues() {
+              var palette = new Rickshaw.Color.Palette();
+              var graph = new Rickshaw.Graph({
+                      element: document.querySelector('#nullYValues'),
+                      height: 100,
+                      renderer: 'line',
+                      series: [{
+                              data: [ { x: 0, y: 40 }, { x: 1, y: -5 }, { x: 2, y: null }, { x: 3, y: 38 }, { x: 4, y: null }, { x: 5, y: 32 } ],
+                              color: palette.color()
+                      }]
+              });
+              graph.palette = palette;
+              graph.render();
+      }
+      nullYValues();
+    </script>
+    </div>
+
     <!-- Points out of order? -->
     Points out of order (Bad):<br>
     <div id="pointsoutoforder">
