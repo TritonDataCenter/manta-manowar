@@ -21,6 +21,7 @@
     <script type="text/javascript">
       //--- Globals.
 
+      var dashboardGroups = null; //Gets populated when refreshed
       var graphs = {};
       var graphNum = 0;
       var dataCache = null; //Gets populated on first populate call.
@@ -1180,10 +1181,109 @@
       <a href="#" id="graph_it" class="green-graph-it" onclick="displayCurrentGraphLink()">Get Link</a> \
       <hr> \
       Dashboard Group:<br> \
-      <select id="dashboard_groups" onchange="loadDashboardGroup()"></select> \
+      <input type="text" id="dashboard_groups" size="30" /> \
       <div id="dashboard_group_list"></div> \
       ';
-              populateDashboardGroups();
+              $('#dashboard_groups').autocomplete({
+                      minLength: 0,
+                      source: autocompleteDashboardGroups,
+                      select: dashboardGroupUpdated,
+                      change: dashboardGroupUpdated
+              });
+      }
+
+
+      function autocompleteDashboardGroups(request, response) {
+              function filter(groups) {
+                      var ret = [];
+                      for (var i in groups) {
+                              var g = groups[i];
+                              if (g.startsWith(request.term)) {
+                                      ret.push(g);
+                              }
+                      }
+                      response(ret);
+              }
+              if (dashboardGroups === null) {
+                      refreshGroups(function (grs) {
+                              filter(grs);
+                      });
+              } else {
+                      filter(dashboardGroups);
+              }
+      }
+
+
+      function refreshGroups(cb) {
+              listMantaDir(dashboardsPrefix, function (err, dirs) {
+                      if (!dirs || dirs.length < 1) {
+                              dirs = [];
+                      }
+                      var r = [];
+                      for (var d in dirs) {
+                              r.push(dirs[d].name);
+                      }
+                      r.sort();
+                      dashboardGroups = r;
+                      cb(r);
+              });
+      }
+
+
+      function dashboardGroupUpdated(e, ui) {
+              function clearGroup() {
+                      document.getElementById("dashboard_group_list").innerHTML = '';
+              }
+
+              var group = document.getElementById("dashboard_groups").value;
+              if (group === '') {
+                      clearGroup();
+                      return;
+              }
+              if (dashboardGroups && dashboardGroups.indexOf(group) !== -1) {
+                      loadDashboardGroup();
+              } else {
+                      if(confirm('Create group ' + group + '?')) {
+                              createDashboardGroup(function (err) {
+                                      if (!err) {
+                                              refreshGroups(function () {
+                                                      loadDashboardGroup();
+                                              });
+                                      } else {
+                                              clearGroup();
+                                      }
+                              });
+                      } else {
+                              clearGroup();
+                      }
+              }
+      }
+
+
+      function createDashboardGroup(cb) {
+              // /save/$MANTA_USER/graphs/dashboards/[group]
+              var group = document.getElementById("dashboard_groups").value;
+              var url = '/save' + dashboardsPrefix + group;
+
+              var success = function (data) {
+                      //refresh current group
+                      cb();
+              }
+
+              var error = function (xhr, err) {
+                      alert('There was an error creating your dashboard ' +
+                            'group.');
+                      cb(err);
+              }
+
+              //save dashboard group
+              $.ajax({
+                      type: "POST",
+                      url: url,
+                      success: success,
+                      error: error
+              });
+
       }
 
 
@@ -1228,28 +1328,6 @@
       </table> \
       ';
               document.getElementById("dashboard_group_list").innerHTML = html;
-      }
-
-
-      function populateDashboardGroups() {
-              listMantaDir(dashboardsPrefix, function (err, dirs) {
-                      //If we error, that's ok, just put the default.
-
-                      var html = '';
-                      if (!dirs || dirs.length < 1) {
-                              dirs = ['--- none created ---'];
-                      } else {
-                              html += '<option>' + SELECT_ONE + '</option>';
-                      }
-
-                      dirs.sort();
-                      for (var d in dirs) {
-                              var dir = dirs[d];
-                              html += '<option>' + dir.name + '</option>';
-                      }
-                      document.getElementById('dashboard_groups').innerHTML =
-                              html;
-              });
       }
 
 
