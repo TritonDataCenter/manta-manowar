@@ -126,11 +126,11 @@ server works:
 
     curl http://localhost:8080/sign/$MANTA_USER/stor/graphs/data/manowar/2012/12/11/21/60.data | xargs -i curl -v -k "{}"
 
-And this to verify it will save dashboards for you:
+And this to verify it will save/delete dashboards for you:
 
     curl -d '{"foo":"bar"}' http://localhost:8080/save/$MANTA_USER/stor/graphs/dashboards/test/invalid
     mget /$MANTA_USER/stor/graphs/dashboards/test/invalid
-    mrm /$MANTA_USER/stor/graphs/dashboards/test/invalid
+    curl -X POST http://localhost:8080/delete/$MANTA_USER/stor/graphs/dashboards/test/invalid
 
 You can run stream-metrics.js directly on some of the logs in data/ like so:
 

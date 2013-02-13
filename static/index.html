@@ -1221,9 +1221,9 @@
       <input type="text" id="dashboard_name" size=30 maxlength=30> \
       </td></tr> \
       <tr><td align=left> \
-      <a href="#" id="graph_it" class="green-graph-it" onclick="saveDashboard()">Save</a> \
-      </td></td> \
-      <!-- TODO: Delete button goes here --> \
+      <a href="#" id="save_dashboard" class="green-graph-it" onclick="saveDashboard()">Save</a> \
+      </td><td align=right> \
+      <a href="#" id="del_dashboard" class="redx" onclick="deleteDashboard()">Delete</a> \
       </td></tr> \
       </table> \
       ';
@@ -1303,7 +1303,37 @@
                       success: success,
                       error: error
               });
+      }
 
+
+      function deleteDashboard() {
+              var group = document.getElementById("dashboard_groups").value;
+              var name = document.getElementById('dashboard_name').value;
+              if (!name) {
+                      alert('A dashboard name is required.');
+                      return;
+              }
+
+              // /delete/$MANTA_USER/graphs/dashboards/[group]/[name]
+              var url = '/delete' + dashboardsPrefix + group + '/' + name;
+
+              var success = function (data) {
+                      //refresh current group
+                      loadDashboardGroup();
+              }
+
+              var error = function (xhr, err) {
+                      alert('There was an error deleting your dashboard.');
+                      return;
+              }
+
+              //save dashboard
+              $.ajax({
+                      type: "POST",
+                      url: url,
+                      success: success,
+                      error: error
+              });
       }
 
 

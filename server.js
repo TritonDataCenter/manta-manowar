@@ -237,6 +237,41 @@ function handleSaveRequest(req, res) {
 }
 
 
+// /delete/$MANTA_USER/stor/graphs/dashboards/[group]/[name]
+function handleDeleteRequest(req, res) {
+        var validatedUrl = validateUrl(req.url);
+
+        if (!validatedUrl.valid) {
+                res.send(validatedUrl.code, validatedUrl.message);
+                return;
+        }
+
+        var urlParts = validatedUrl.urlParts;
+        if (urlParts[5] !== 'dashboards') {
+                res.send(403, validatedUrl.relativePath + ' is invalid: ' +
+                         'not saving to anywhere but \'dashboards\'.');
+                return;
+        }
+
+        if (urlParts.length !== 8 || urlParts[6] === '' || urlParts[7] === '') {
+                res.send(403, validatedUrl.relativePath + ' is invalid: ' +
+                         'missing graph group and/or name.');
+                return;
+        }
+
+        var dobj = '/' + validatedUrl.urlParts.slice(2, 8).join('/');
+        LOG.info({ object: dobj }, 'deleting object');
+        MANTA_CLIENT.unlink(dobj, {}, function (err) {
+                if (err && err.code !== 'ResourceNotFound') {
+                        LOG.error(err);
+                        res.send(500, 'Error processing ' + req.url);
+                        return;
+                }
+                res.send(200, 'Ok.');
+        });
+}
+
+
 function audit(req, res, next) {
         var start = (new Date()).getTime();
         res.on('finish', function () {
@@ -277,6 +312,7 @@ app.get('/config', handleConfigRequest);
 //Route to the ajaxy parts
 app.get('/sign/*', handleSignRequest);
 app.post('/save/*', handleSaveRequest);
+app.post('/delete/*', handleDeleteRequest);
 
 //Route everything else to the static directory.
 app.use(express.static(__dirname + '/static'));
