@@ -193,32 +193,42 @@ function handleSaveRequest(req, res) {
                 return;
         }
 
-        if (urlParts.length !== 8 || urlParts[6] === '' || urlParts[7] === '') {
+        if (urlParts.length < 7 || urlParts[6] === '') {
                 res.send(403, validatedUrl.relativePath + ' is invalid: ' +
-                         'missing graph group and/or graph name.');
+                         'missing graph group.');
                 return;
         }
 
-        // Uploading will resume later
+        // Uploading will resume later in the manta client.
         req.pause();
 
-        makeDirs(validatedUrl, function (err) {
+        function endRequest(err) {
                 if (err) {
-                        res.send(500, 'Unable to create required ' +
+                        LOG.error(err);
+                        res.send(500, 'Error processing ' + req.url);
+                        return;
+                }
+                res.send(200, 'Ok.');
+        }
+
+        function uploadObject(err) {
+                if (err) {
+                        res.send(500, 'Unable to create requested ' +
                                  'directories.');
                         return;
                 }
 
                 var dobj = '/' + validatedUrl.urlParts.slice(2, 8).join('/');
                 LOG.info({ object: dobj }, 'putting object');
-                MANTA_CLIENT.put(dobj, req, CORS_OPTS, function (err2) {
-                        if (err2) {
-                                res.send(500, 'Error saving ' + dobj);
-                                return;
-                        }
-                        res.send(200, 'Ok.');
-                });
-        });
+                MANTA_CLIENT.put(dobj, req, CORS_OPTS, endRequest);
+        }
+
+        var next = endRequest;
+        if (urlParts.length === 8 && urlParts[7] !== '') {
+                next = uploadObject;
+        }
+
+        makeDirs(validatedUrl, next);
 
         req.on('error', function (err) {
                 LOG.error(err, 'error on save request');
