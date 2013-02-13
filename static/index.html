@@ -21,15 +21,17 @@
     <script type="text/javascript">
       //--- Globals.
 
-      var graphs = [];
+      var graphs = {};
       var graphNum = 0;
       var dataCache = null; //Gets populated on first populate call.
-      var mantaPrefix = null; //Gets populated on page load.
+      var dataPrefix = null; //Gets populated on page load.
       var dataPath = '/stor/graphs/data/';
+      var dashboardsPrefix = null; //Gets populated on page load.
+      var dashboardsPath = '/stor/graphs/dashboards/';
       var selectedGraph = null;
       var graphItButtonEnabled = false;
 
-
+      var SELECT_ONE = '--- select one ---';
 
       //--- Muck with prototypes...
 
@@ -324,10 +326,12 @@
       }
 
 
-      function removeGraph(did) {
+      function removeGraph(graphNum) {
+              var did = 'graph-div-' + graphNum;
               var content = document.querySelector('#content');
               var graphdiv = document.querySelector('#' + did);
               content.removeChild(graphdiv);
+              delete graphs[graphNum];
       }
 
 
@@ -336,19 +340,21 @@
               var periodSeconds = opts.periodSeconds;
               var numPoints = opts.numPoints;
 
-              //Create a new div and append to content...
-              var did = 'graph-div-' + graphNum;
-              var gid = 'graph-' + graphNum;
-              var sid = 'graph-slider-' + graphNum;
-              var lid = 'legend-' + graphNum;
+              var gNum = graphNum;
               graphNum++;
+
+              //Create a new div and append to content...
+              var did = 'graph-div-' + gNum;
+              var gid = 'graph-' + gNum;
+              var sid = 'graph-slider-' + gNum;
+              var lid = 'legend-' + gNum;
 
               var gdiv = '<table border=0><tr><td rowspan=2 width="100%">' +
                       '<div id="' + gid + '"></div>' +
                       '<br>' +
                       '<div id="' + sid + '"></div>' +
                       '</td><td valign=top>' +
-                      '<a href="#" class="redx" onclick=removeGraph("' + did + '")>x</a>' +
+                      '<a href="#" class="redx" onclick=removeGraph("' + gNum + '")>x</a>' +
                       '</td></tr><tr><td valign=top>' +
                       '<div id="' + lid + '"></div>' +
                       '</td></tr</table>';
@@ -376,7 +382,7 @@
               //Here we add our own stuff to the graph so that we can
               // introspect for more stuff later...
               graph.palette = palette;
-              graphs.push(graph);
+              graphs[gNum] = graph;
               graph.startSeconds = startSeconds;
               graph.periodSeconds = periodSeconds;
               graph.numPoints = numPoints;
@@ -582,7 +588,7 @@
               //This will break if we put data in other places.  It should
               //probably be smarter and see if the above directory is 'data'
               if (!current && depth < 6) {
-                      var p = mantaPrefix + path.slice(0, depth).join('/');
+                      var p = dataPrefix + path.slice(0, depth).join('/');
                       listMantaDir(p, function (err, dirs) {
                               if (err) {
                                       err.terminationDepth = depth;
@@ -642,7 +648,7 @@
                       });
               } else if (!current) {
                       //Get the object from manta...
-                      var p = mantaPrefix + path.slice(0, depth).join('/') + '.data';
+                      var p = dataPrefix + path.slice(0, depth).join('/') + '.data';
                       getMantaData(p, function(err, data) {
                               if (err) {
                                       err.terminationDepth = depth;
@@ -818,7 +824,7 @@
                       if (opts.currentPath &&
                           (now - opts.startTime) > 500) {
                               var p = 'Searching Manta:<br>' +
-                                      mantaPrefix +
+                                      dataPrefix +
                                       opts.currentPath.join('/');
                               showStatusDialog(p);
                       }
@@ -1042,7 +1048,8 @@
 
                       //Figure out the prefix from the user the server
                       // is serving up.
-                      mantaPrefix = '/' + c.user + dataPath;
+                      dataPrefix = '/' + c.user + dataPath;
+                      dashboardsPrefix = '/' + c.user + dashboardsPath;
 
                       //Loal user config from localstorage...
                       if (!localStorage['config']) {
@@ -1075,7 +1082,7 @@
         <td align=right><img src="css/images/ui-anim_basic_16x16.gif"></td> \
       </tr></table> \
       ');
-              getMantaData(mantaPrefix, function (err) {
+              getMantaData(dataPrefix, function (err) {
                       if (err) {
                               var m = '';
                               if (err.mantaUrl) {
@@ -1137,9 +1144,20 @@
               return dashboard;
       }
 
+
       function restoreDashboard(dashboard) {
+              for (var d in graphs) {
+                      removeGraph(d);
+              }
+
+              var errors = '';
               for (var gn in dashboard) {
                       var g = dashboard[gn];
+                      if (!g.paths || g.paths.length < 1) {
+                              errors += 'Index: ' + gn + ', Graph Definition:' +
+                                      ' ' + JSON.stringify(g) + '\n';
+                              continue;
+                      }
                       var graph = newGraph({
                               startSeconds: g.startSeconds,
                               periodSeconds: g.periodSeconds,
@@ -1151,8 +1169,142 @@
                               applyPathToGraph(graph, path);
                       }
               }
+              if (errors !== '') {
+                      alert('Errors with some graph definitions:\n' + errors);
+              }
       }
 
+
+      function setupDashboardNav() {
+              document.getElementById("dashboard_nav").innerHTML = ' \
+      <a href="#" id="graph_it" class="green-graph-it" onclick="displayCurrentGraphLink()">Get Link</a> \
+      <hr> \
+      Dashboard Group:<br> \
+      <select id="dashboard_groups" onchange="loadDashboardGroup()"></select> \
+      <div id="dashboard_group_list"></div> \
+      ';
+              populateDashboardGroups();
+      }
+
+
+      function loadDashboardGroup() {
+              var group = document.getElementById("dashboard_groups").value;
+              document.getElementById("dashboard_group_list").innerHTML = '';
+              if (group === SELECT_ONE) {
+                      return;
+              }
+
+              var dir = dashboardsPrefix + group + '/';
+              listMantaDir(dir, function (err, dirs) {
+                      // Ignoring errors again...
+                      if (!dirs) {
+                              dirs = [];
+                      }
+                      populateDashboardGroupList(group, dirs);
+              });
+      }
+
+
+      function populateDashboardGroupList(group, dirs) {
+              var html = '<br>';
+              for (var d in dirs) {
+                      var dir = dirs[d];
+                      var call = '"restoreNamedDashboard(\'' + group +
+                              '\', \'' + dir.name + '\')"';
+                      html += '<a href="#" onclick=' + call + '>' + dir.name +
+                              '</a><br>';
+              }
+              html += ' \
+      <br> \
+      <table cellspacing=0 cellpadding=0> \
+      <tr><td colspan=2> \
+      <input type="text" id="dashboard_name" size=30 maxlength=30> \
+      </td></tr> \
+      <tr><td align=left> \
+      <a href="#" id="graph_it" class="green-graph-it" onclick="saveDashboard()">Save</a> \
+      </td></td> \
+      <!-- TODO: Delete button goes here --> \
+      </td></tr> \
+      </table> \
+      ';
+              document.getElementById("dashboard_group_list").innerHTML = html;
+      }
+
+
+      function populateDashboardGroups() {
+              listMantaDir(dashboardsPrefix, function (err, dirs) {
+                      //If we error, that's ok, just put the default.
+
+                      var html = '';
+                      if (!dirs || dirs.length < 1) {
+                              dirs = ['--- none created ---'];
+                      } else {
+                              html += '<option>' + SELECT_ONE + '</option>';
+                      }
+
+                      dirs.sort();
+                      for (var d in dirs) {
+                              var dir = dirs[d];
+                              html += '<option>' + dir.name + '</option>';
+                      }
+                      document.getElementById('dashboard_groups').innerHTML =
+                              html;
+              });
+      }
+
+
+      function restoreNamedDashboard(group, name) {
+              var path = dashboardsPrefix + group + '/' + name;
+              getMantaData(path, function (err, data) {
+                      try {
+                              var dashboard = JSON.parse(data);
+                              restoreDashboard(dashboard);
+                      } catch (e) {
+                              alert('Error parsing data from Manta:\n' +
+                                    data);
+                      }
+              });
+      }
+
+
+      function saveDashboard() {
+              var dashObj = getCurrentDashboard();
+              if (dashObj.length < 1) {
+                      alert('Please make a dashboard first.');
+                      return;
+              }
+
+              var group = document.getElementById("dashboard_groups").value;
+              var name = document.getElementById('dashboard_name').value;
+              if (!name) {
+                      alert('A dashboard name is required.');
+                      return;
+              }
+
+              // /save/$MANTA_USER/graphs/dashboards/[group]/[name]
+              var url = '/save' + dashboardsPrefix + group + '/' + name;
+              var dashString = JSON.stringify(dashObj);
+
+              var success = function (data) {
+                      //refresh current group
+                      loadDashboardGroup();
+              }
+
+              var error = function (xhr, err) {
+                      alert('There was an error saving your dashboard.');
+                      return;
+              }
+
+              //save dashboard
+              $.ajax({
+                      type: "POST",
+                      url: url,
+                      data: dashString,
+                      success: success,
+                      error: error
+              });
+
+      }
 
 
       //--- Fun with giving out dashboards to your friends
@@ -1182,6 +1334,7 @@
               var dashboard = encodeURIComponent(JSON.stringify(dashObj));
 
               var before_query = window.location.toString().split('?')[0];
+              before_query = before_query.split('#')[0];
 
               var url = before_query + '?dashboard=' + dashboard;
               $(function() {
@@ -1206,6 +1359,7 @@
                       testMantaConnection(function (err) {
                               if (!err) {
                                       loadUrlGraph();
+                                      setupDashboardNav();
                               }
                       });
               });
@@ -1233,9 +1387,17 @@
       </tr>
     </table>
     <hr id="header_separator">
-    <a href="#" id="graph_it" class="green-graph-it" onclick="displayCurrentGraphLink()">Get Link</a><br>
     <div id="status_dialog"></div>
 
-    <ul id="content" class="sortable list"></ul>
+    <table width="100%" height="100%" cellspacing="0" cellpadding="0">
+      <tr>
+        <td width="11%" valign="top">
+          <div id="dashboard_nav" />
+        </td>
+        <td width="1" bgcolor="grey" border-spacing="0"><br></td>
+        <td width="5" border-spacing="0"><br></td>
+        <td valign="top"><ul id="content" class="sortable list"></ul></td>
+      </tr>
+    </table>
   </body>
 </html>

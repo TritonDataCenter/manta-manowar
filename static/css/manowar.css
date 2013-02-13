@@ -1,6 +1,12 @@
 #features {
   font-size: 0.9em;
 }
+
+a:link {color:#000000;}      /* unvisited link */
+a:visited {color:#000000;}  /* visited link */
+a:hover {color:#808080;}  /* mouse over link */
+a:active {color:#000000;}  /* selected link */
+
 .connected, .sortable, .exclude, .handles {
 #  margin: auto;
   padding: 0;
@@ -11,9 +17,11 @@
   -ms-user-select: none;
   user-select: none;
 }
+
 .sortable.grid {
   overflow: hidden;
 }
+
 .connected li, .sortable li, .exclude li, .handles li {
   list-style: none;
   border: 1px solid #CCC;
@@ -23,15 +31,19 @@
 #  height: 22px;
 #  width: 1500px;
 }
+
 .handles span {
   cursor: move;
 }
+
 li.disabled {
   opacity: 0.5;
 }
+
 li.highlight {
   background: #FEE25F;
 }
+
 li.sortable-placeholder {
   border: 1px dashed #CCC;
   background: none;
@@ -42,10 +54,12 @@ li.sortable-placeholder {
 .rickshaw_graph .detail .x_label {
   display: none
 }
+
 .rickshaw_graph .detail .item {
   line-height: 1.4;
   padding: 0.5em
 }
+
 .detail_swatch {
   float: right;
   display: inline-block;
@@ -53,6 +67,7 @@ li.sortable-placeholder {
   height: 10px;
   margin: 0 4px 0 0
 }
+
 .rickshaw_graph .detail .date {
   color: #a0a0a0
 }
