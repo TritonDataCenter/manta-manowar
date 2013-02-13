@@ -35,10 +35,21 @@ var SIGN = manta.privateKeySigner({
         user: MANTA_USER
 });
 
+//And even after all ^^, we still need a manta client.  We read from the
+// file again so that we can delete ^^ once MANTA-564 is done.
+var MANTA_CLIENT = manta.createClientFromFileSync(MANTA_CONFIG_FILE, LOG);
+
 var EXPIRES_SECONDS = 300; //5 minutes
 var VALID_PATH_PREFIXES = [
-        '/graphs/data/'
+        '/graphs/data/',
+        '/graphs/dashboards/'
 ];
+
+var CORS_OPTS = {
+        headers: {
+                'access-control-allow-origin': '*'
+        }
+};
 
 
 
@@ -62,36 +73,39 @@ function getSignedUrl(host, path, cb) {
 }
 
 
-//--- Handlers
+function makeDirs(validatedUrl, cb) {
+        //$MANTA_USER/stor/graphs shouldn't have CORS headers.
+        var rootDir = '/' + validatedUrl.urlParts.slice(2, 5).join('/');
+        LOG.debug({ rootDir: rootDir }, 'making root dir');
+        MANTA_CLIENT.mkdir(rootDir, function (err) {
+                if (err) {
+                        cb(err);
+                        return;
+                }
 
-function handleConfigRequest(req, res) {
-        res.send(JSON.stringify({
-                url: MANTA_URL,
-                user: MANTA_USER
-        }));
+                var dir = '/' + validatedUrl.urlParts.slice(2, 7).join('/');
+                LOG.debug({ dir: dir }, 'making other dirs');
+                MANTA_CLIENT.mkdirp(dir, CORS_OPTS, function (err2) {
+                        cb(err2);
+                });
+        });
 }
 
 
-function handleSignRequest(req, res) {
-        var urlObj = url.parse(req.url, true);
+function validateUrl(reqUrl) {
+        var urlObj = url.parse(reqUrl, true);
         var urlPath = urlObj.pathname;
-
-        //Hostname that the client is using to connect to manta can be sent
-        // in a query parameter.
-        var query = urlObj.query;
-        var host = query.host || MANTA_HOST;
-
         var urlParts = urlPath.split('/');
-        LOG.info({ url: req.url, parts: urlParts, query: query },
-                 'Processing url.');
-
-        //console.log(util.inspect(req));
+        LOG.info({ url: urlObj, parts: urlParts },
+                 'Validating url.');
 
         //Check user and path
         var sentUser = urlParts[2];
         if (sentUser !== MANTA_USER || urlParts[3] !== 'stor') {
-                res.send(403, sentUser + ' is invalid.');
-                return;
+                return ({ valid: false,
+                          code: 403,
+                          message: sentUser + ' is an invalid manta user.'
+                       });
         }
 
         var relativePath = '/' + urlParts.slice(4).join('/');
@@ -108,11 +122,48 @@ function handleSignRequest(req, res) {
         }
 
         if (!valid) {
-                res.send(403, req.url + ' is forbidden.');
+                return ({ valid: false,
+                          code: 403,
+                          message: reqUrl + ' is forbidden.'
+                       });
+        }
+
+        return ({ valid: true,
+                  urlObj: urlObj,
+                  urlPath: urlPath,
+                  urlParts: urlParts,
+                  relativePath: relativePath
+                });
+}
+
+
+
+//--- Handlers
+
+function handleConfigRequest(req, res) {
+        res.send(JSON.stringify({
+                url: MANTA_URL,
+                user: MANTA_USER
+        }));
+}
+
+
+// /sign/$MANTA_USER/stor/graphs/data/...
+function handleSignRequest(req, res) {
+        var validatedUrl = validateUrl(req.url);
+
+        if (!validatedUrl.valid) {
+                res.send(validatedUrl.code, validatedUrl.message);
                 return;
         }
 
-        var fullPath = '/' + urlParts.slice(2).join('/');
+        //Hostname that the client is using to connect to manta can be sent
+        // in a query parameter.
+        var query = validatedUrl.urlObj.query;
+        var host = query.host || MANTA_HOST;
+
+
+        var fullPath = '/' + validatedUrl.urlParts.slice(2).join('/');
 
         //Sign what they want and return.
         getSignedUrl(host, fullPath, function (err, resource) {
@@ -122,6 +173,56 @@ function handleSignRequest(req, res) {
                 }
                 var mantaUrl = 'https://' + host + resource;
                 res.send(mantaUrl);
+        });
+}
+
+
+// /save/$MANTA_USER/stor/graphs/dashboards/[group]/[name]
+function handleSaveRequest(req, res) {
+        var validatedUrl = validateUrl(req.url);
+
+        if (!validatedUrl.valid) {
+                res.send(validatedUrl.code, validatedUrl.message);
+                return;
+        }
+
+        var urlParts = validatedUrl.urlParts;
+        if (urlParts[5] !== 'dashboards') {
+                res.send(403, validatedUrl.relativePath + ' is invalid: ' +
+                         'not saving to anywhere but \'dashboards\'.');
+                return;
+        }
+
+        if (urlParts.length !== 8 || urlParts[6] === '' || urlParts[7] === '') {
+                res.send(403, validatedUrl.relativePath + ' is invalid: ' +
+                         'missing graph group and/or graph name.');
+                return;
+        }
+
+        // Uploading will resume later
+        req.pause();
+
+        makeDirs(validatedUrl, function (err) {
+                if (err) {
+                        res.send(500, 'Unable to create required ' +
+                                 'directories.');
+                        return;
+                }
+
+                var dobj = '/' + validatedUrl.urlParts.slice(2, 8).join('/');
+                LOG.info({ object: dobj }, 'putting object');
+                MANTA_CLIENT.put(dobj, req, CORS_OPTS, function (err2) {
+                        if (err2) {
+                                res.send(500, 'Error saving ' + dobj);
+                                return;
+                        }
+                        res.send(200, 'Ok.');
+                });
+        });
+
+        req.on('error', function (err) {
+                LOG.error(err, 'error on save request');
+                res.send(500, 'Internal error');
         });
 }
 
@@ -163,8 +264,9 @@ app.use(audit);
 //Route first to config
 app.get('/config', handleConfigRequest);
 
-//Route second to the ajaxy part
+//Route to the ajaxy parts
 app.get('/sign/*', handleSignRequest);
+app.post('/save/*', handleSaveRequest);
 
 //Route everything else to the static directory.
 app.use(express.static(__dirname + '/static'));
