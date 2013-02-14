@@ -16,7 +16,8 @@ var now = (new Date()).getTime();
 ///--- Tests
 
 test('test: with Date vs Time', function (t) {
-        var rtDate = RelativeTime.millisSinceEpoch('1 hours ago', new Date(now));
+        var rtDate = RelativeTime.millisSinceEpoch('1 hours ago',
+                                                   new Date(now));
         var rtTime = RelativeTime.millisSinceEpoch('1 hours ago', now);
         t.equal(rtDate, rtTime, 'Date and time equal relative times');
         t.equal(now - rtTime, 1000 * 60 * 60, 'Not correct offset');
@@ -280,7 +281,7 @@ test('test: unix time: N hours ago', function (t) {
         t.equal(Math.round(now / 1000) - rtTimeUnix, 60 * 60 * 24,
                 '24 hours ago isn\'t 24 hours ago, unix time.');
         t.ok((rtTimeMillis - (rtTimeUnix * 1000)) < 1000,
-                '24 hours unix ime vs milliseconds since epoch.')
+             '24 hours unix ime vs milliseconds since epoch.');
         t.end();
 });
 

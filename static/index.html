@@ -31,7 +31,7 @@
       var dashboardsPrefix = null; //Gets populated on page load.
       var dashboardsPath = '/stor/graphs/dashboards/';
       var selectedGraph = null;
-      var graphItButtonEnabled = false;
+      var doItButtonEnabled = false;
 
       var SELECT_ONE = '--- select one ---';
 
@@ -94,6 +94,34 @@
       }
 
 
+      function validateStartAndEndTimes(startText, endText) {
+              var startSeconds = getSecondsFromText(startText);
+              var endSeconds = getSecondsFromText(endText);
+
+              if (isNaN(startSeconds)) {
+                      alert('Invalid Start.');
+                      return null;
+              }
+
+              if (isNaN(endSeconds)) {
+                      alert('Invalid End.');
+                      return null;
+              }
+
+              if (startSeconds >= endSeconds) {
+                      alert('Start (' + startText + ') is after End (' +
+                            endText + ')');
+                      return null;
+              }
+
+              return ({
+                      startSeconds: startSeconds,
+                      endSeconds: endSeconds
+              });
+
+      }
+
+
       //http://stackoverflow.com/questions/647259/javascript-query-string
       function getQueryString() {
               var result = {}, queryString = location.search.substring(1),
@@ -133,6 +161,29 @@
       }
 
 
+      //This is kinda inefficient... but it only happens once in a
+      // while, so who cares.
+      function updateAllGraphDates() {
+              var startText = document.querySelector('#start_text').value;
+              var endText = document.querySelector('#end_text').value;
+
+              var seTimes = validateStartAndEndTimes(startText, endText);
+              if (!seTimes) {
+                      return;
+              }
+
+              //Now update...
+              var dash = getCurrentDashboard();
+              for (var g in dash) {
+                      var def = dash[g];
+                      def.startText = startText;
+                      def.endText = endText;
+              }
+              restoreDashboard(dash);
+      }
+
+
+
       //--- Fun with adding data to graphs.
 
       function newGraph(opts) {
@@ -140,9 +191,13 @@
               var endText = opts.endText;
               var periodSeconds = opts.periodSeconds;
 
-              //First attempt to parse relative time
-              var startSeconds = getSecondsFromText(startText);
-              var endSeconds = getSecondsFromText(endText);
+              var seTimes = validateStartAndEndTimes(startText, endText);
+              if (!seTimes) {
+                      return;
+              }
+
+              var startSeconds = seTimes.startSeconds;
+              var endSeconds = seTimes.endSeconds;
 
               var numPoints = (endSeconds - startSeconds) / periodSeconds;
 
@@ -370,15 +425,28 @@
               var sid = 'graph-slider-' + gNum;
               var lid = 'legend-' + gNum;
 
-              var gdiv = '<table border=0><tr><td rowspan=2 width="100%">' +
-                      '<div id="' + gid + '"></div>' +
-                      '<br>' +
-                      '<div id="' + sid + '"></div>' +
-                      '</td><td valign=top>' +
-                      '<a href="#" class="redx" onclick=removeGraph("' + gNum + '")>x</a>' +
-                      '</td></tr><tr><td valign=top>' +
-                      '<div id="' + lid + '"></div>' +
-                      '</td></tr</table>';
+              //These are the graph structures.
+              var gdiv = ' \
+      <table border=0> \
+      <tr><td valign=bottom> \
+            <table border=0 width=100%><tr> \
+              <td align=left><font size=1>' + startText + '</font></td> \
+              <td align=right><font size=1>' + endText + '</font></td> \
+            </tr></table> \
+          </td><td valign=top> \
+            <a href="#" class="redx" onclick=removeGraph("' + gNum + '")>x</a> \
+          </td> \
+      </tr><tr> \
+          <td width="100%"> \
+            <div id="' + gid + '"></div> \
+            <br> \
+            <div id="' + sid + '"></div> \
+          </td><td valign=top> \
+             <div id="' + lid + '"></div> \
+          </td> \
+        </tr> \
+      </table> \
+      ';
 
               var newli = document.createElement('li');
               newli.draggable = true;
@@ -971,40 +1039,70 @@
 
 
 
-      //--- Fun with the graphit button
+      //--- Fun with the doIt button
 
-      function disableGraphIt() {
-              var graphButton = document.querySelector('#graph_it');
-              document.getElementById("graph_it").className = 'grey-graph-it';
-              graphItButtonEnabled = false;
+      function disableDoIt() {
+              document.getElementById("do_it").className = 'grey-graph-it';
+              doItButtonEnabled = false;
       }
 
 
-      function enableGraphIt() {
-              var graphButton = document.querySelector('#graph_it');
-              document.getElementById("graph_it").className = 'green-graph-it';
-              graphItButtonEnabled = true;
+      function enableDoIt() {
+              document.getElementById("do_it").className = 'green-graph-it';
+              doItButtonEnabled = true;
+      }
+
+
+      function updateDoItText(newText) {
+              document.getElementById("do_it").innerHTML = newText;
+      }
+
+
+      function whatsReady() {
+              var val = document.querySelector('#path_chooser').value;
+              var start = document.querySelector('#start_text').value;
+              var end = document.querySelector('#end_text').value;
+              var path = val.split('/');
+
+              return ({
+                      dates: start && end && start !== end,
+                      path: path.length === 3 &&
+                              path[path.length - 1] !== '',
+                      graphs: Object.keys(graphs).length > 0
+              });
+
+      }
+
+
+      function doIt() {
+                      var ready = whatsReady();
+                      if (ready.dates && ready.path) {
+                              addLineFromPathChooser();
+                      } else if (ready.dates && ready.graphs) {
+                              updateAllGraphDates();
+                      }
       }
 
 
       //Since the autocomplete thing is 'magic' and sometimes doesn't enable
-      // the graphit button we're doing this hacky thing instead...
+      // the doIt button we're doing this hacky thing instead...
       $(function () {
-              function testEnableGraphItButton() {
+              function testEnableDoItButton() {
                       var timeout = 1000;
-                      var val = document.querySelector('#path_chooser').value;
-                      var start = document.querySelector('#start_text').value;
-                      var end = document.querySelector('#end_text').value;
-                      var path = val.split('/');
-                      if (path.length === 3 && path[path.length - 1] !== '' &&
-                          start && end && start !== end) {
-                              enableGraphIt();
+                      var ready = whatsReady();
+
+                      if (ready.dates && ready.path) {
+                              updateDoItText('Graph It!');
+                              enableDoIt();
+                      } else if (ready.dates && ready.graphs) {
+                              updateDoItText('Update Graphs!');
+                              enableDoIt();
                       } else {
-                              disableGraphIt();
+                              disableDoIt();
                       }
-                      setTimeout(testEnableGraphItButton, timeout);
+                      setTimeout(testEnableDoItButton, timeout);
               }
-              testEnableGraphItButton();
+              testEnableDoItButton();
       });
 
 
@@ -1156,6 +1254,7 @@
       }
 
 
+
       //--- Fun with saving/restoring dashboards!
 
       function getCurrentDashboard() {
@@ -1235,7 +1334,7 @@
 
       function setupDashboardNav() {
               document.getElementById("dashboard_nav").innerHTML = ' \
-      <a href="#" id="graph_it" class="green-graph-it" onclick="displayCurrentGraphLink()">Get Link</a> \
+      <a href="#" id="do_it" class="green-graph-it" onclick="displayCurrentGraphLink()">Get Link</a> \
       <hr> \
       Dashboard Group:<br> \
       <input type="text" id="dashboard_groups" size="30" /> \
@@ -1544,8 +1643,8 @@
           Path: <input type="text" id="path_chooser" name="path_chooser" size="100" />
           Start: <input type="text" id="start_text" size="17" />
           End: <input type="text" id="end_text" size="17" />
-          <a href="#" id="graph_it" class="green-graph-it"
-             onclick="if (graphItButtonEnabled) { addLineFromPathChooser(); }">Graph It!</a>
+          <a href="#" id="do_it" class="green-graph-it"
+             onclick="if (doItButtonEnabled) { doIt(); }">Graph It!</a>
         </td>
         <td align="right">
           Manta Host Override:
