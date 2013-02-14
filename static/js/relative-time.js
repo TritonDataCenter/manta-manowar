@@ -45,19 +45,7 @@
         }
 
 
-        /**
-         * Supports:
-         *   - now
-         *   - yesterday
-         *   - N second(s) ago
-         *   - N minute(s) ago
-         *   - N hour(s) ago
-         *   - N day(s) ago
-         *   - N weeks(s) ago
-         *   - N month(s) ago
-         *   - N year(s) ago
-         */
-        exports.unixTime = function(friendly, now) {
+        function millisSinceEpoch(friendly, now) {
                 //Either an integer or a Date will work.
                 now = now || (new Date()).getTime();
                 if (isValidDate(now)) {
@@ -91,6 +79,36 @@
                 }
 
                 return ret;
-        };
+        }
+
+
+        function unixTime(friendly, now) {
+                var t = millisSinceEpoch(friendly, now);
+                if (t !== null && t !== undefined && !isNaN(parseInt(t, 10))) {
+                        t = Math.round(t / 1000);
+                }
+                return t;
+        }
+
+
+        /**
+         * Supports:
+         *   - now
+         *   - yesterday
+         *   - N second(s) ago
+         *   - N minute(s) ago
+         *   - N hour(s) ago
+         *   - N day(s) ago
+         *   - N weeks(s) ago
+         *   - N month(s) ago
+         *   - N year(s) ago
+         */
+        exports.millisSinceEpoch = millisSinceEpoch;
+
+
+        /**
+         * Same as millisSinceEpoch, but seconds (aka Unix Time)
+         */
+        exports.unixTime = unixTime;
 
 })(typeof exports === 'undefined' ? this['RelativeTime'] = {}: exports);
