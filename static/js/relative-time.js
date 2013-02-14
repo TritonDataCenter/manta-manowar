@@ -11,12 +11,28 @@
         }
 
 
-        function getDifference(n, period) {
+        function getTime(now, n, period) {
                 if (period.charAt(period.length - 1) === 's') {
                         period = period.substring(0, period.length - 1);
                 }
                 if (multipliers[period] !== undefined) {
-                        return n * multipliers[period];
+                        var offset = n * multipliers[period];
+                        return now - offset;
+                } else if (period === 'month') {
+                        var date = new Date(now);
+                        //The javascript date library is smart enough to
+                        // detect that we have an invalid day and set the
+                        // month appropriately.  While not exactly what I think
+                        // it should do (really Id want the end of the
+                        // month rather than the beginning), it's good enough.
+                        date.setMonth(date.getMonth() - n);
+                        return date.getTime();
+                } else if (period === 'year') {
+                        var date = new Date(now);
+                        //Same goes here, goes to March 1st instead of
+                        // February 28th.  Close enough.
+                        date.setFullYear(date.getFullYear() - n);
+                        return date.getTime();
                 }
                 return null;
         }
@@ -38,8 +54,8 @@
          *   - N hour(s) ago
          *   - N day(s) ago
          *   - N weeks(s) ago
-         *
-         * TODO: Add support for months/years
+         *   - N month(s) ago
+         *   - N year(s) ago
          */
         exports.unixTime = function(friendly, now) {
                 //Either an integer or a Date will work.
@@ -69,10 +85,7 @@
                                 var ago = parts[2];
 
                                 if (!isNaN(n) && ago === 'ago') {
-                                        var diff = getDifference(n, period);
-                                        if (diff !== null) {
-                                                ret = now - diff;
-                                        }
+                                        ret = getTime(now, n, period);
                                 }
                         }
                 }

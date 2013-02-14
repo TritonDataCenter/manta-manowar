@@ -12,9 +12,6 @@ var test = helper.test;
 var now = (new Date()).getTime();
 
 
-//--- Helpers
-
-
 
 ///--- Tests
 
@@ -122,6 +119,116 @@ test('test: N weeks ago', function (t) {
 });
 
 
+test('test: N month ago', function (t) {
+        var testNow = new Date('2012/10/01 19:01:12');
+        var then = new Date('2012/06/01 19:01:12');
+        var rtTime = RelativeTime.unixTime('4 month ago', testNow);
+        t.equal(then.getTime(), rtTime,
+                '4 month ago isn\'t 4 months ago.');
+        t.end();
+});
+
+
+test('test: N months ago', function (t) {
+        var testNow = new Date('2012/10/01 19:01:12');
+        var then = new Date('2012/02/01 19:01:12');
+        var rtTime = RelativeTime.unixTime('8 months ago', testNow);
+        t.equal(then.getTime(), rtTime,
+                '8 months ago isn\'t 8 months ago.');
+        t.end();
+});
+
+
+test('test: N months ago, past year boundary', function (t) {
+        var testNow = new Date('2012/10/01 19:01:12');
+        var then = new Date('2011/05/01 19:01:12');
+        var rtTime = RelativeTime.unixTime('17 months ago', testNow);
+        t.equal(then.getTime(), rtTime,
+                '17 months ago isn\'t 17 months ago.');
+        t.end();
+});
+
+
+test('test: N months ago, on year boundary, positive', function (t) {
+        var testNow = new Date('2012/10/01 00:00:00');
+        var then = new Date('2011/01/01 00:00:00');
+        var rtTime = RelativeTime.unixTime('21 months ago', testNow);
+        t.equal(then.getTime(), rtTime,
+                '21 months ago isn\'t 21 months ago.');
+        t.end();
+});
+
+
+test('test: N months ago, on year boundary, negative', function (t) {
+        var testNow = new Date('2012/10/31 23:59:59');
+        var then = new Date('2010/12/31 23:59:59');
+        var rtTime = RelativeTime.unixTime('22 months ago', testNow);
+        t.equal(then.getTime(), rtTime,
+                '22 months ago isn\'t 22 months ago.');
+        t.end();
+});
+
+
+test('test: N months ago, offset ends of months', function (t) {
+        var testNow = new Date('2012/10/31 00:00:00');
+        var then = new Date('2012/07/01 00:00:00');
+        var rtTime = RelativeTime.unixTime('4 months ago', testNow);
+        t.equal(then.getTime(), rtTime,
+                '4 months ago isn\'t 4 months ago.');
+        t.end();
+});
+
+
+test('test: N months ago, large', function (t) {
+        var testNow = new Date('2012/10/19 00:00:00');
+        var then = new Date('1991/10/19 00:00:00');
+        var rtTime = RelativeTime.unixTime('252 months ago', testNow);
+        t.equal(then.getTime(), rtTime,
+                '252 months ago isn\'t 252 months ago.');
+        t.end();
+});
+
+
+test('test: N year ago', function (t) {
+        var testNow = new Date('2012/10/19 00:00:00');
+        var then = new Date('1991/10/19 00:00:00');
+        var rtTime = RelativeTime.unixTime('21 year ago', testNow);
+        t.equal(then.getTime(), rtTime,
+                '21 year ago isn\'t 21 years ago.');
+        t.end();
+});
+
+
+test('test: N years ago', function (t) {
+        var testNow = new Date('2012/10/19 00:00:00');
+        var then = new Date('1996/10/19 00:00:00');
+        var rtTime = RelativeTime.unixTime('16 year ago', testNow);
+        t.equal(then.getTime(), rtTime,
+                '16 years ago isn\'t 16 years ago.');
+        t.end();
+});
+
+
+test('test: 1 year ago', function (t) {
+        var testNow = new Date('2012/10/19 00:00:00');
+        var then = new Date('2011/10/19 00:00:00');
+        var rtTime = RelativeTime.unixTime('1 year ago', testNow);
+        t.equal(then.getTime(), rtTime,
+                '1 year ago isn\'t 1 years ago.');
+        t.end();
+});
+
+
+test('test: N years ago, leap year boundary', function (t) {
+        var testNow = new Date('2012/02/29 00:00:00');
+        var then = new Date('2011/03/01 00:00:00');
+        var rtTime = RelativeTime.unixTime('1 year ago', testNow);
+        t.equal(then.getTime(), rtTime,
+                '1 year ago isn\'t 1 year ago.');
+        t.end();
+});
+
+
 test('test: junk', function (t) {
         var rtTime = RelativeTime.unixTime('junk', now);
         t.equal(null, rtTime, 'Junk didn\'t cause null');
@@ -162,4 +269,3 @@ test('test: junk days ago', function (t) {
         t.equal(null, rtTime, 'Junk didn\'t cause null');
         t.end();
 });
-
