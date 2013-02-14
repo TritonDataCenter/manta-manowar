@@ -17,6 +17,7 @@
     <!-- http://trentrichardson.com/examples/timepicker/ -->
     <script src="js/jquery-ui-timepicker-addon.js"></script>
     <script src="js/rickshaw.js"></script>
+    <script src="js/relative-time.js"></script>
 
     <script type="text/javascript">
       //--- Globals.
@@ -75,7 +76,22 @@
                       hour: timeParts[0],
               });
       }
-      //End Janky,,,
+      //End Janky
+
+
+      function getSecondsFromText(text) {
+              //First attempt to parse relative time
+              var seconds = RelativeTime.unixTime(text);
+              if (seconds !== null && seconds !== undefined &&
+                  !isNaN(parseInt(seconds, 10))) {
+                      return seconds;
+              }
+
+              //Do javascript's text parsing.
+              var utc = stringToUTCDate(text);
+              seconds = Math.round(new Date(utc).getTime() / 1000);
+              return seconds;
+      }
 
 
       //http://stackoverflow.com/questions/647259/javascript-query-string
@@ -96,47 +112,49 @@
 
       function addLineFromPathChooser() {
               var path = document.querySelector('#path_chooser').value;
-              var startDate = document.querySelector('#start_date').value;
-              var endDate = document.querySelector('#end_date').value;
-
-              //Turn start and end date into UTC...
-              startDate = stringToUTCDate(startDate);
-              endDate = stringToUTCDate(endDate);
+              var startText = document.querySelector('#start_text').value;
+              var endText = document.querySelector('#end_text').value;
 
               //TODO: Un hard-code this.
               var periodSeconds = 60;
-              //Round the dates to the nearest periods to start fetching data...
-              var startSeconds = new Date(startDate).getTime() / 1000;
-              var endSeconds = new Date(endDate).getTime() / 1000;
 
               var graph = newGraph({
-                      startSeconds: startSeconds,
-                      endSeconds: endSeconds,
+                      startText: startText,
+                      endText: endText,
                       periodSeconds: periodSeconds
               });
 
-              applyPathToGraph(graph, path);
+              if (!graph.error) {
+                      applyPathToGraph(graph, path);
+              } else {
+                      alert('Error Creating Graph:\n' +
+                            graph.errorMessage);
+              }
       }
 
 
       //--- Fun with adding data to graphs.
 
       function newGraph(opts) {
-              var startSeconds = opts.startSeconds;
+              var startText = opts.startText;
+              var endText = opts.endText;
               var periodSeconds = opts.periodSeconds;
-              var numPoints = opts.numPoints;
-              if (!numPoints || opts.endSeconds) {
-                      var endSeconds = opts.endSeconds;
-                      numPoints = (endSeconds - startSeconds) / periodSeconds;
-              }
+
+              //First attempt to parse relative time
+              var startSeconds = getSecondsFromText(startText);
+              var endSeconds = getSecondsFromText(endText);
+
+              var numPoints = (endSeconds - startSeconds) / periodSeconds;
 
               //Just in case, rounding the seconds to our expectations
               startSeconds = startSeconds - (startSeconds % periodSeconds);
               endSeconds = endSeconds - (endSeconds % periodSeconds);
 
               return createEmptyGraph({
-                      startSeconds: startSeconds,
+                      startText: startText,
+                      endText: endText,
                       periodSeconds: periodSeconds,
+                      startSeconds: startSeconds,
                       numPoints: numPoints
               });
       }
@@ -337,6 +355,8 @@
 
 
       function createEmptyGraph(opts) {
+              var startText = opts.startText;
+              var endText = opts.endText;
               var startSeconds = opts.startSeconds;
               var periodSeconds = opts.periodSeconds;
               var numPoints = opts.numPoints;
@@ -384,6 +404,8 @@
               // introspect for more stuff later...
               graph.palette = palette;
               graphs[gNum] = graph;
+              graph.startText = startText;
+              graph.endText = endText;
               graph.startSeconds = startSeconds;
               graph.periodSeconds = periodSeconds;
               graph.numPoints = numPoints;
@@ -896,43 +918,53 @@
                       $('.ui-datepicker-today', $dp).click();
               };
 
-              var startDateTextBox = $('#start_date');
-              var endDateTextBox = $('#end_date');
+              var startTextBox = $('#start_text');
+              var endTextBox = $('#end_text');
 
-              startDateTextBox.datetimepicker({
+              startTextBox.datetimepicker({
                       controlType: 'select',
                       timeFormat: 'HH:mm',
+                      constrainInput: false,
                       onClose: function(dateText, inst) {
-                              if (endDateTextBox.val() != '') {
-                                      var testStartDate = startDateTextBox.datetimepicker('getDate');
-                                      var testEndDate = endDateTextBox.datetimepicker('getDate');
+                              if (endTextBox.val() != '') {
+                                      var testStartDate = startTextBox.datetimepicker('getDate');
+                                      var testEndDate = endTextBox.datetimepicker('getDate');
                                       if (testStartDate > testEndDate)
-                                              endDateTextBox.datetimepicker('setDate', testStartDate);
+                                              endTextBox.datetimepicker('setDate', testStartDate);
                               }
                               else {
-                                      endDateTextBox.val(dateText);
+                                      endTextBox.val(dateText);
                               }
                       },
-                      onSelect: function (selectedDateTime){
-                              endDateTextBox.datetimepicker('option', 'minDate', startDateTextBox.datetimepicker('getDate') );
+                      onSelect: function (selectedDateTime) {
+                              if (!endTextBox.val()) {
+                                      endTextBox.datetimepicker(
+                                              'option', 'minDate',
+                                              startTextBox.datetimepicker('getDate') );
+                              }
                       }
               });
-              endDateTextBox.datetimepicker({
+              endTextBox.datetimepicker({
                       controlType: 'select',
                       timeFormat: 'HH:mm',
+                      constrainInput: false,
                       onClose: function(dateText, inst) {
-                              if (startDateTextBox.val() != '') {
-                                      var testStartDate = startDateTextBox.datetimepicker('getDate');
-                                      var testEndDate = endDateTextBox.datetimepicker('getDate');
+                              if (startTextBox.val() != '') {
+                                      var testStartDate = startTextBox.datetimepicker('getDate');
+                                      var testEndDate = endTextBox.datetimepicker('getDate');
                                       if (testStartDate > testEndDate)
-                                              startDateTextBox.datetimepicker('setDate', testEndDate);
+                                              startTextBox.datetimepicker('setDate', testEndDate);
                               }
                               else {
-                                      startDateTextBox.val(dateText);
+                                      startTextBox.val(dateText);
                               }
                       },
                       onSelect: function (selectedDateTime){
-                              startDateTextBox.datetimepicker('option', 'maxDate', endDateTextBox.datetimepicker('getDate') );
+                              if (!startTextBox.val()) {
+                                      startTextBox.datetimepicker(
+                                              'option', 'maxDate',
+                                              endTextBox.datetimepicker('getDate') );
+                              }
                       }
               });
       });
@@ -961,8 +993,8 @@
               function testEnableGraphItButton() {
                       var timeout = 1000;
                       var val = document.querySelector('#path_chooser').value;
-                      var start = document.querySelector('#start_date').value;
-                      var end = document.querySelector('#end_date').value;
+                      var start = document.querySelector('#start_text').value;
+                      var end = document.querySelector('#end_text').value;
                       var path = val.split('/');
                       if (path.length === 3 && path[path.length - 1] !== '' &&
                           start && end && start !== end) {
@@ -1135,9 +1167,9 @@
                               paths.push(j);
                       }
                       var current = {
-                              startSeconds: cg.startSeconds,
+                              startText: cg.startText,
+                              endText: cg.endText,
                               periodSeconds: cg.periodSeconds,
-                              numPoints: cg.numPoints,
                               paths: paths
                       };
                       dashboard.push(current);
@@ -1152,22 +1184,47 @@
               }
 
               var errors = '';
+              NEXT_DASH:
               for (var gn in dashboard) {
                       var g = dashboard[gn];
+
+                      //Error Checking
+                      var checkProperties = ['startText', 'endText',
+                                             'periodSeconds'];
+                      for (var i in checkProperties) {
+                              var p = checkProperties[i];
+                              if (g[p] === undefined) {
+                                      var m = 'Property: ' + p + ' missing ' +
+                                              'from graph definition.';
+                                      errors += 'Index: ' + gn + ', Message: ' +
+                                              m + ', Graph Definition:' +
+                                              ' ' + JSON.stringify(g) + '\n';
+                                      continue NEXT_DASH;
+                              }
+                      }
                       if (!g.paths || g.paths.length < 1) {
                               errors += 'Index: ' + gn + ', Graph Definition:' +
                                       ' ' + JSON.stringify(g) + '\n';
                               continue;
                       }
+
+                      //Make the graph
                       var graph = newGraph({
-                              startSeconds: g.startSeconds,
-                              periodSeconds: g.periodSeconds,
-                              numPoints: g.numPoints
+                              startText: g.startText,
+                              endText: g.endText,
+                              periodSeconds: g.periodSeconds
                       });
 
-                      for (var u in g.paths) {
-                              var path = g.paths[u];
-                              applyPathToGraph(graph, path);
+                      if (graph.error) {
+                              errors += 'Index: ' + gn + ', Message: ' +
+                                      graph.errorMessage +
+                                      ', Graph Definition:' +
+                                      ' ' + JSON.stringify(g) + '\n';
+                      } else {
+                              for (var u in g.paths) {
+                                      var path = g.paths[u];
+                                      applyPathToGraph(graph, path);
+                              }
                       }
               }
               if (errors !== '') {
@@ -1422,13 +1479,15 @@
               if (qs.dashboard === undefined) {
                       return;
               }
+              var def = null;
               try {
                       var def = JSON.parse(qs.dashboard);
-                      restoreDashboard(def);
               } catch (e) {
                       alert(qs.dashboard + ' isn\'t a valid dashboard ' +
-                            'definition.');
+                            'definition: ' + e.message);
+                      return;
               }
+              restoreDashboard(def);
       }
 
 
@@ -1472,6 +1531,9 @@
                       });
               });
       });
+
+
+
     </script>
   </head>
   <body>
@@ -1480,8 +1542,8 @@
         <td align="left">Man O' War</td>
         <td align="center">
           Path: <input type="text" id="path_chooser" name="path_chooser" size="100" />
-          Start: <input type="text" id="start_date" size="17" />
-          End: <input type="text" id="end_date" size="17" />
+          Start: <input type="text" id="start_text" size="17" />
+          End: <input type="text" id="end_text" size="17" />
           <a href="#" id="graph_it" class="green-graph-it"
              onclick="if (graphItButtonEnabled) { addLineFromPathChooser(); }">Graph It!</a>
         </td>
