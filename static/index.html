@@ -32,6 +32,8 @@
       var dashboardsPath = '/stor/graphs/dashboards/';
       var selectedGraph = null;
       var doItButtonEnabled = false;
+      var nameregex = /^[\w-. ]+$/;
+      var validnamechars = 'Word characters, dashes, dots, and spaces.';
 
       var SELECT_ONE = '--- select one ---';
 
@@ -1377,7 +1379,7 @@
                       }
                       var r = [];
                       for (var d in dirs) {
-                              r.push(dirs[d].name);
+                              r.push(decodeURIComponent(dirs[d].name));
                       }
                       r.sort();
                       dashboardGroups = r;
@@ -1396,9 +1398,17 @@
                       clearGroup();
                       return;
               }
+
               if (dashboardGroups && dashboardGroups.indexOf(group) !== -1) {
                       loadDashboardGroup();
               } else {
+                      if (!group.match(nameregex)) {
+                              alert('Dashboard Group Name ' + group + ' is ' +
+                                    'invalid, must contain only: ' +
+                                    validnamechars);
+                              return;
+                      }
+
                       if(confirm('Create group ' + group + '?')) {
                               createDashboardGroup(function (err) {
                                       if (!err) {
@@ -1464,10 +1474,10 @@
       function populateDashboardGroupList(group, dirs) {
               var html = '<br>';
               for (var d in dirs) {
-                      var dir = dirs[d];
+                      var dir = decodeURIComponent(dirs[d].name);
                       var call = '"restoreNamedDashboard(\'' + group +
-                              '\', \'' + dir.name + '\')"';
-                      html += '<a href="#" onclick=' + call + '>' + dir.name +
+                              '\', \'' + dir + '\')"';
+                      html += '<a href="#" onclick=' + call + '>' + dir +
                               '</a><br>';
               }
               html += ' \
@@ -1514,6 +1524,14 @@
                       alert('A dashboard name is required.');
                       return;
               }
+
+              if (!name.match(nameregex)) {
+                      alert('Dashboard Name ' + name + ' is ' +
+                            'invalid, must contain only: ' +
+                            validnamechars);
+                      return;
+              }
+
 
               // /save/$MANTA_USER/graphs/dashboards/[group]/[name]
               var url = '/save' + dashboardsPrefix + group + '/' + name;
