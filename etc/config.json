@@ -1,6 +1,8 @@
 {
   "past_hours_to_scan": 3,
   "services": {
+    "mako-gc": [ "fileCount", "objectCount", "cronExec", "processed",
+                 "alreadyDeleted", "error" ],
     "manowar": [ "latency", "statusCode:latency" ],
     "mola": [ "jobErrors", "jobDurationMillis", "startedJob", "cronFailed",
               "numberOfObjects", "cronRunMillis" ],
