@@ -4,6 +4,9 @@
     "manowar": [ "latency", "statusCode:latency" ],
     "mola": [ "jobErrors", "jobDurationMillis", "startedJob", "cronFailed",
               "numberOfObjects", "cronRunMillis" ],
+    "mola-moray-gc": [ "cronFailed", "rowsDeleted", "rowsAlreadyDeleted",
+                       "cronRunMillis", "latency", "shard:latency",
+                       "alreadyDeleted", "error" ],
     "muskie": [ "latency", "res.statusCode:latency", "req.method:latency",
                 "hostname:latency", "res.headers.content-type:latency" ]
   }
