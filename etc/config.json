@@ -1,8 +1,10 @@
 {
   "past_hours_to_scan": 3,
   "services": {
+    "manowar": [ "latency", "statusCode:latency" ],
+    "mola": [ "jobErrors", "jobDurationMillis", "startedJob", "cronFailed",
+              "numberOfObjects", "cronRunMillis" ],
     "muskie": [ "latency", "res.statusCode:latency", "req.method:latency",
-                "hostname:latency", "res.headers.content-type:latency" ],
-    "manowar": [ "latency", "statusCode:latency" ]
+                "hostname:latency", "res.headers.content-type:latency" ]
   }
 }
