@@ -4,6 +4,7 @@
     "manowar": [ "latency", "statusCode:latency" ],
     "mola": [ "jobErrors", "jobDurationMillis", "startedJob", "cronFailed",
               "numberOfObjects", "cronRunMillis" ],
+    "mola-gc-create-links": [ "count", "error", "cronExec" ],
     "mola-moray-gc": [ "cronFailed", "rowsDeleted", "rowsAlreadyDeleted",
                        "cronRunMillis", "latency", "shard:latency",
                        "alreadyDeleted", "error" ],
