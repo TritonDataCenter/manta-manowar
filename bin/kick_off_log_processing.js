@@ -11,7 +11,7 @@ var manta = require('manta');
 var MemoryStream = require('memorystream');
 var path = require('path');
 var sys = require('sys');
-
+var vasync = require('vasync');
 
 
 ///--- Global Objects
@@ -155,6 +155,20 @@ function getObject(objectPath, cb) {
                 stream.on('end', function () {
                         cb(null, res);
                 });
+        });
+}
+
+
+function getJob(jobId, cb) {
+        MANTA_CLIENT.job(jobId, function (err, job) {
+                cb(err, job);
+        });
+}
+
+
+function cancelJob(jobId, cb) {
+        MANTA_CLIENT.cancelJob(jobId, function (err) {
+                cb(err);
         });
 }
 
@@ -479,31 +493,79 @@ function startJobs(config, cb) {
 }
 
 
-function getCurrentJobs(cb) {
-        var jobs = {};
-        MANTA_CLIENT.listJobs({
-                query: {
-                        state: 'running'
+function cancelJobsWithOpenInput(jobs, cb) {
+        var jobsToCancel = [];
+        for (var i = 0; i < jobs.length; ++i) {
+                var job = jobs[i];
+                if (job.inputDone === false) {
+                        jobsToCancel.push(job.id);
                 }
-        }, function (err, res) {
+        }
+
+        if (jobsToCancel.length === 0) {
+                cb(null, jobs);
+                return;
+        }
+
+        LOG.info({ jobsIds: jobsToCancel }, 'canceling jobs');
+        vasync.forEachParallel({
+                func: cancelJob,
+                inputs: jobsToCancel
+        }, function (err) {
+                if (err) {
+                        cb(err);
+                        return;
+                }
+                cb(null, jobs);
+        });
+}
+
+
+//This kinda sucks.  Since the new job APIs, the list doesn't return
+// all the relevant information, so we have to fetch them all.
+function getCurrentJobs(cb) {
+        var lopts = { state: RUNNING_STATE };
+        MANTA_CLIENT.listJobs(lopts, function (err, res) {
                 if (err) {
                         cb(err);
                         return;
                 }
 
+                var jobs = [];
+
+                res.on('job', function (job) {
+                        jobs.push(job.name);
+                });
+
                 res.on('error', function (err2) {
                         cb(err2);
                 });
 
-                res.on('job', function (job) {
-                        //Yes, possible for there to be
-                        // multiple jobs with the same name.
-                        jobs[job.name] = job;
-                });
+                res.on('end', function () {
+                        if (jobs.length === 0) {
+                                cb(null, jobs);
+                        }
 
-                res.once('end', function () {
-                        LOG.info({ jobs: jobs }, 'Current jobs.');
-                        cb(null, jobs);
+                        var jobObjs = [];
+                        vasync.forEachParallel({
+                                func: getJob,
+                                inputs: jobs
+                        }, function (err2, results) {
+                                if (err2) {
+                                        cb(err2);
+                                        return;
+                                }
+
+                                for (var i = 0; i < jobs.length; ++i) {
+                                        var j = results.successes[i];
+                                        if (j.name &&
+                                            j.name.indexOf(JOB_PREFIX) === 0) {
+                                                jobObjs.push(j);
+                                        }
+                                }
+                                LOG.info({ jobs: jobObjs }, 'Current jobs.');
+                                cancelJobsWithOpenInput(jobObjs, cb);
+                        });
                 });
         });
 }
