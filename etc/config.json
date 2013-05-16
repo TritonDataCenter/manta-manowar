@@ -10,6 +10,8 @@
     "mola-moray-gc": [ "cronFailed", "rowsDeleted", "rowsAlreadyDeleted",
                        "cronRunMillis", "latency", "shard:latency",
                        "alreadyDeleted", "error" ],
+    "mola-audit": [ "jobErrors", "jobDurationMillis", "startedJob", "cronFailed",
+                    "cronRunMillis" ],
     "muskie": [ "latency", "res.statusCode:latency", "req.method:latency",
                 "hostname:latency", "res.headers.content-type:latency" ]
   }
