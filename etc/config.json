@@ -12,8 +12,8 @@
                        "alreadyDeleted", "error" ],
     "mola-audit": [ "jobErrors", "jobDurationMillis", "startedJob", "cronFailed",
                     "cronRunMillis" ],
-    "muskie": [ "latency", "res.statusCode:latency", "req.method:latency",
-                "hostname:latency", "res.headers.content-type:latency",
-                "latencyToFirstByte" ]
+    "muskie": [ "latency", "res.statusCode:latency",
+                "operation:latency", "operation:latencyToFirstByte",
+                "hostname:latency", "res.headers.content-type:latency" ]
   }
 }
