@@ -476,7 +476,7 @@ function startJobs(config, cb) {
                                         service: service,
                                         hourPath: hourPath,
                                         fields: fields,
-                                        period: 60,
+                                        period: 300,
                                         forceReprocess: forceReprocess,
                                         jobs: jobs
                                 }, function (err2) {
