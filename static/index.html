@@ -1494,6 +1494,9 @@
       </table> \
       ';
               document.getElementById("dashboard_group_list").innerHTML = html;
+              //Now we explicitely blur the text box so that it doesn't do
+              // the annoying blink when you try and click a link...
+              document.getElementById("dashboard_groups").blur();
       }
 
 
