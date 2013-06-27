@@ -1,0 +1,18 @@
+{
+  "hostTypes": [
+    {
+      "hostType": "manowar",
+      "processes": [
+        { "processType": "manowar", "port": 8080 }
+      ]
+    }
+  ],
+  "processTypes": [
+    {
+      "processType": "manowar",
+      "checkerType": "http",
+      "path": "/ping",
+      "secure": false
+    }
+  ]
+}

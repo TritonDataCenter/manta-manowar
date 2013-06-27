@@ -1,0 +1,158 @@
+{
+  "hostTypes": [
+    {
+      "hostType": "loadbalancer",
+      "processes": [
+        { "processType": "stud", "port": 443 },
+        { "processType": "haproxy", "port": 80 }
+      ]
+    },
+    {
+      "hostType": "webapi",
+      "processes": [
+        { "processType": "haproxy", "port": 80 },
+        { "processType": "muskie", "port": 8081 }
+      ]
+    },
+    {
+      "hostType": "authcache",
+      "processes": [
+        { "processType": "redis", "port": 6379 }
+      ]
+    },
+    {
+      "hostType": "electric-moray",
+      "processes": [
+        { "processType": "haproxy-tcp", "port": 2020 },
+        { "processType": "moray", "port": 2021 }
+      ]
+    },
+    {
+      "hostType": "moray",
+      "processes": [
+        { "processType": "haproxy-tcp", "port": 2020 },
+        { "processType": "moray", "port": 2021 }
+      ]
+    },
+    {
+      "hostType": "postgres",
+      "processes": [
+        { "processType": "postgres", "port": 5432 },
+        { "processType": "pg-backup", "port": 12345 }
+      ]
+    },
+    {
+      "hostType": "storage",
+      "processes": [
+        { "processType": "mako", "port": 80 }
+      ]
+    },
+    {
+      "hostType": "jobsupervisor",
+      "processes": [
+        { "processType": "noop" }
+      ]
+    },
+    {
+      "hostType": "compute",
+      "processes": [
+        { "processType": "noop" }
+      ]
+    },
+    {
+      "hostType": "nameservice",
+      "processes": [
+        { "processType": "binder", "port": 53 },
+        { "processType": "zookeeper", "port": 2181 }
+      ]
+    },
+    {
+      "hostType": "medusa",
+      "processes": [
+        { "processType": "noop" }
+      ]
+    },
+    {
+      "hostType": "jobpuller",
+      "processes": [
+        { "processType": "noop" }
+      ]
+    },
+    {
+      "hostType": "ops",
+      "processes": [
+        { "processType": "manowar", "port": 8080 }
+      ]
+    },
+    {
+      "hostType": "workflow",
+      "processes": [
+        { "processType": "noop" }
+      ]
+    }
+  ],
+  "processTypes": [
+    {
+      "processType": "binder",
+      "checkerType": "noop"
+    },
+    {
+      "processType": "haproxy",
+      "checkerType": "http",
+      "path": "/ping",
+      "secure": false
+    },
+    {
+      "processType": "haproxy-tcp",
+      "checkerType": "noop"
+    },
+    {
+      "processType": "mako",
+      "checkerType": "http",
+      "path": "/50x.html",
+      "secure": false
+    },
+    {
+      "processType": "manowar",
+      "checkerType": "http",
+      "path": "/ping",
+      "secure": false
+    },
+    {
+      "processType": "muskie",
+      "checkerType": "http",
+      "path": "/ping",
+      "secure": false
+    },
+    {
+      "processType": "moray",
+      "checkerType": "noop"
+    },
+    {
+      "processType": "noop",
+      "checkerType": "noop"
+    },
+    {
+      "processType": "pg-backup",
+      "checkerType": "noop"
+    },
+    {
+      "processType": "postgres",
+      "checkerType": "noop"
+    },
+    {
+      "processType": "redis",
+      "checkerType": "noop"
+    },
+    {
+      "processType": "stud",
+      "checkerType": "noop",
+      "path": "/ping",
+      "secure": true
+    },
+    {
+      "processType": "zookeeper",
+      "checkerType": "noop"
+    }
+  ]
+}
