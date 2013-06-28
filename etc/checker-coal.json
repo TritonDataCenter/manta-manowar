@@ -50,13 +50,13 @@
     {
       "hostType": "jobsupervisor",
       "processes": [
-        { "processType": "noop" }
+        { "processType": "supervisor", "port": 80 }
       ]
     },
     {
-      "hostType": "compute",
+      "hostType": "agent",
       "processes": [
-        { "processType": "noop" }
+        { "processType": "agent", "port": 9080 }
       ]
     },
     {
@@ -81,20 +81,27 @@
     {
       "hostType": "ops",
       "processes": [
-        { "processType": "manowar", "port": 8080 }
+        { "processType": "manowar", "port": 80 }
       ]
     },
     {
       "hostType": "workflow",
       "processes": [
-        { "processType": "noop" }
+        { "processType": "workflow", "port": 80 }
       ]
     }
   ],
   "processTypes": [
     {
+      "processType": "agent",
+      "checkerType": "http",
+      "path": "/kang/snapshot",
+      "secure": false
+    },
+    {
       "processType": "binder",
-      "checkerType": "noop"
+      "checkerType": "dns",
+      "domainName": "1.moray.coal.joyent.us"
     },
     {
       "processType": "electric-moray",
@@ -110,6 +117,12 @@
     {
       "processType": "haproxy-tcp",
       "checkerType": "tcp"
+    },
+    {
+      "processType": "supervisor",
+      "checkerType": "http",
+      "path": "/kang/snapshot",
+      "secure": false
     },
     {
       "processType": "mako",
@@ -139,11 +152,12 @@
     },
     {
       "processType": "pg-backup",
-      "checkerType": "noop"
+      "checkerType": "tcp"
     },
     {
       "processType": "postgres",
-      "checkerType": "noop"
+      "checkerType": "postgres",
+      "username": "postgres"
     },
     {
       "processType": "redis",
@@ -156,8 +170,13 @@
       "secure": true
     },
     {
+      "processType": "workflow",
+      "checkerType": "tcp"
+    },
+    {
       "processType": "zookeeper",
-      "checkerType": "noop"
+      "checkerType": "zookeeper",
+      "path": "/zookeeper/quota"
     }
   ]
 }

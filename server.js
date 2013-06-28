@@ -10,11 +10,16 @@ var vasync = require('vasync');
 
 //Health Check
 var Checker = require('./lib/health_checker');
+var DnsChecker = require('./lib/checkers/dns_checker');
 var HttpChecker = require('./lib/checkers/http_checker');
 var MorayChecker = require('./lib/checkers/moray_checker');
 var NoopChecker = require('./lib/checkers/noop_checker');
+var PostgresChecker = require('./lib/checkers/postgres_checker');
 var RedisChecker = require('./lib/checkers/redis_checker');
 var TcpChecker = require('./lib/checkers/tcp_checker');
+var ZookeeperChecker = require('./lib/checkers/zookeeper_checker');
+
+
 
 //--- Globals
 
@@ -327,6 +332,68 @@ function audit(req, res, next) {
 }
 
 
+function registerCheckers(checker, cb) {
+        if (!checker) {
+                cb();
+                return;
+        }
+        vasync.pipeline({
+                'funcs': [
+                        function loadDnsChecker(_, subcb) {
+                                CHECKER.registerChecker({
+                                        'label': 'dns',
+                                        'checker': DnsChecker
+                                }, subcb);
+                        },
+                        function loadHttpChecker(_, subcb) {
+                                CHECKER.registerChecker({
+                                        'label': 'http',
+                                        'checker': HttpChecker
+                                }, subcb);
+                        },
+                        function loadMorayChecker(_, subcb) {
+                                CHECKER.registerChecker({
+                                        'label': 'moray',
+                                        'checker': MorayChecker
+                                }, subcb);
+                        },
+                        function loadNoopChecker(_, subcb) {
+                                CHECKER.registerChecker({
+                                        'label': 'noop',
+                                        'checker': NoopChecker
+                                }, subcb);
+                        },
+                        function loadPostgresChecker(_, subcb) {
+                                CHECKER.registerChecker({
+                                        'label': 'postgres',
+                                        'checker': PostgresChecker
+                                }, subcb);
+                        },
+                        function loadRedisChecker(_, subcb) {
+                                CHECKER.registerChecker({
+                                        'label': 'redis',
+                                        'checker': RedisChecker
+                                }, subcb);
+                        },
+                        function loadTcpChecker(_, subcb) {
+                                CHECKER.registerChecker({
+                                        'label': 'tcp',
+                                        'checker': TcpChecker
+                                }, subcb);
+                        },
+                        function loadZookeeperChecker(_, subcb) {
+                                CHECKER.registerChecker({
+                                        'label': 'zookeeper',
+                                        'checker': ZookeeperChecker
+                                }, subcb);
+                        }
+                ]
+        }, function (err) {
+                cb(err);
+        });
+}
+
+
 
 //--- Main
 
@@ -382,37 +449,7 @@ vasync.pipeline({
                         //Kinda hacky...
                         CHECKER._loadedCfg = cfg;
                         CHECKER._loadedHostsCfg = hosts;
-                        subcb();
-                },
-                function loadHttpChecker(_, subcb) {
-                        CHECKER.registerChecker({
-                                'label': 'http',
-                                'checker': HttpChecker
-                        }, subcb);
-                },
-                function loadMorayChecker(_, subcb) {
-                        CHECKER.registerChecker({
-                                'label': 'moray',
-                                'checker': MorayChecker
-                        }, subcb);
-                },
-                function loadNoopChecker(_, subcb) {
-                        CHECKER.registerChecker({
-                                'label': 'noop',
-                                'checker': NoopChecker
-                        }, subcb);
-                },
-                function loadRedisChecker(_, subcb) {
-                        CHECKER.registerChecker({
-                                'label': 'redis',
-                                'checker': RedisChecker
-                        }, subcb);
-                },
-                function loadTcpChecker(_, subcb) {
-                        CHECKER.registerChecker({
-                                'label': 'tcp',
-                                'checker': TcpChecker
-                        }, subcb);
+                        registerCheckers(CHECKER, subcb);
                 },
                 function registerCheckerCfg(_, subcb) {
                         if (!CHECKER) {
