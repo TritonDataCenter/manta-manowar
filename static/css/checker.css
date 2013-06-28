@@ -1,5 +1,6 @@
 .healthy-host,
-.unhealthy-host {
+.unhealthy-host,
+.noop-host {
     border-top: 1px #cccccc solid;
     border-right: 1px #cccccc solid;
     border-bottom: 1px #cccccc solid;
@@ -17,6 +18,10 @@
 
 .unhealthy-host {
     background-color: #FF3333;
+}
+
+.noop-host {
+    background-color: #3399FF;
 }
 
 .arch-table {
@@ -54,4 +59,5 @@
 
 .host-table td {
     padding: 2px;
+    border: 0px;
 }

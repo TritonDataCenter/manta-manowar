@@ -11,13 +11,16 @@ var vasync = require('vasync');
 //Health Check
 var Checker = require('./lib/health_checker');
 var HttpChecker = require('./lib/checkers/http_checker');
+var MorayChecker = require('./lib/checkers/moray_checker');
 var NoopChecker = require('./lib/checkers/noop_checker');
+var RedisChecker = require('./lib/checkers/redis_checker');
+var TcpChecker = require('./lib/checkers/tcp_checker');
 
 //--- Globals
 
 var DEFAULT_PORT = 8080;
 var LOG = bunyan.createLogger({
-        level: (process.env.LOG_LEVEL || 'debug'),
+        level: (process.env.LOG_LEVEL || 'info'),
         name: 'manowar',
         stream: process.stdout
 });
@@ -387,10 +390,28 @@ vasync.pipeline({
                                 'checker': HttpChecker
                         }, subcb);
                 },
+                function loadMorayChecker(_, subcb) {
+                        CHECKER.registerChecker({
+                                'label': 'moray',
+                                'checker': MorayChecker
+                        }, subcb);
+                },
                 function loadNoopChecker(_, subcb) {
                         CHECKER.registerChecker({
                                 'label': 'noop',
                                 'checker': NoopChecker
+                        }, subcb);
+                },
+                function loadRedisChecker(_, subcb) {
+                        CHECKER.registerChecker({
+                                'label': 'redis',
+                                'checker': RedisChecker
+                        }, subcb);
+                },
+                function loadTcpChecker(_, subcb) {
+                        CHECKER.registerChecker({
+                                'label': 'tcp',
+                                'checker': TcpChecker
                         }, subcb);
                 },
                 function registerCheckerCfg(_, subcb) {

@@ -61,10 +61,16 @@
                 var self = this;
                 var html = '';
                 //Determine health
-                var csclass = process.stats.healthy ?
+                var cssclass = process.stats.healthy ?
                         'healthy-host' : 'unhealthy-host';
+
+                //Make it easier to see what still needs to be implemented.
+                if (process.checkerType === 'noop') {
+                        cssclass = 'noop-host';
+                }
+
                 var div = $('<div></div>');
-                div.addClass(csclass);
+                div.addClass(cssclass);
 
                 var dialog = null;
                 div.click(function (eve) {

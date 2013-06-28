@@ -24,7 +24,7 @@
       "hostType": "electric-moray",
       "processes": [
         { "processType": "haproxy-tcp", "port": 2020 },
-        { "processType": "moray", "port": 2021 }
+        { "processType": "electric-moray", "port": 2021 }
       ]
     },
     {
@@ -97,6 +97,11 @@
       "checkerType": "noop"
     },
     {
+      "processType": "electric-moray",
+      "checkerType": "moray",
+      "bucket": "manta"
+    },
+    {
       "processType": "haproxy",
       "checkerType": "http",
       "path": "/ping",
@@ -104,7 +109,7 @@
     },
     {
       "processType": "haproxy-tcp",
-      "checkerType": "noop"
+      "checkerType": "tcp"
     },
     {
       "processType": "mako",
@@ -126,7 +131,7 @@
     },
     {
       "processType": "moray",
-      "checkerType": "noop"
+      "checkerType": "moray"
     },
     {
       "processType": "noop",
@@ -142,11 +147,11 @@
     },
     {
       "processType": "redis",
-      "checkerType": "noop"
+      "checkerType": "redis"
     },
     {
       "processType": "stud",
-      "checkerType": "noop",
+      "checkerType": "http",
       "path": "/ping",
       "secure": true
     },
