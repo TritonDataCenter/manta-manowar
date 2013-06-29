@@ -24,11 +24,40 @@
     background-color: #3399FF;
 }
 
+.status-table {
+    border: 1px #cccccc solid;
+    border-collapse: collapse;
+    padding-right: 5px;
+    margin: 4px;
+    width: 100%;
+}
+
+.status-left {
+    width: 50%;
+    text-align: left;
+}
+
+.status-right {
+    width: 50%;
+    text-align: right;
+}
+
 .arch-table {
     border: 1px #cccccc solid;
     border-collapse: collapse;
     padding-right: 5px;
     margin: 4px;
+    width: 100%;
+}
+
+/* Make this as small as possible */
+.arch-table-th-header {
+    width: 1%;
+}
+
+/* Make this as large as possible */
+.arch-table-th-td {
+    width: 100%;
 }
 
 .arch-table th {

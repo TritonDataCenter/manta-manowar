@@ -48,15 +48,15 @@
       ]
     },
     {
-      "hostType": "jobsupervisor",
-      "processes": [
-        { "processType": "supervisor", "port": 80 }
-      ]
-    },
-    {
       "hostType": "agent",
       "processes": [
         { "processType": "agent", "port": 9080 }
+      ]
+    },
+    {
+      "hostType": "jobsupervisor",
+      "processes": [
+        { "processType": "supervisor", "port": 80 }
       ]
     },
     {

@@ -1,5 +1,6 @@
 // http://learn.jquery.com/plugins/basic-plugin-creation/
 (function($) {
+        var REFRESH_PERIOD = 15000;
 
         //--- Fetch the data
         function getData(cb) {
@@ -41,6 +42,17 @@
                 });
         }
 
+        //--- Clock
+        function updateClock(seconds) {
+                var self = this;
+                if (seconds % 5 === 0) {
+                        $('#clock', self).each(function () {
+                                this.innerHTML = seconds +
+                                        ' seconds until refresh.';
+                        });
+                }
+        }
+
         //--- Error
         function displayError(message) {
                 var self = this;
@@ -72,16 +84,24 @@
                 var div = $('<div></div>');
                 div.addClass(cssclass);
 
-                var dialog = null;
+                var dg = null;
                 div.click(function (eve) {
-                        if (!dialog) {
-                                dialog = $('<div></div>');
-                                div.append(dialog);
+                        if (!dg) {
+                                dg = $('<div class="host-popover"></div>');
+                                div.append(dg);
                                 //TODO: Spark lines and other fun!
-                                dialog.append('<p><pre>' +
-                                             JSON.stringify(process, null, 2) +
-                                             '</pre></p>');
-                                dialog.dialog({
+                                dg.append('<p><pre>' +
+                                          JSON.stringify(process, null, 2) +
+                                          '</pre></p>');
+                                var pos = div.position();
+                                var width = div.width();
+                                console.log({
+                                        pos: pos,
+                                        width: width,
+                                        x: pos.left + width + 5,
+                                        y: pos.top
+                                });
+                                dg.dialog({
                                         dialog: true,
                                         buttons: {
                                                 Ok: function () {
@@ -93,7 +113,7 @@
                                                    eve.clientY]
                                 });
                         }
-                        dialog.dialog('open');
+                        dg.dialog('open');
                 });
 
                 return div;
@@ -167,9 +187,11 @@
                 //Headers...
                 var table = $('<table class="arch-table"><tr>');
                 var row = $('<tr>');
-                row.append('<th width="1%">Host Type</th>');
+                row.append('<th class="arch-table-th-header">' +
+                           'Host Type</th>');
                 for (var i = 0; i < dcs.length; ++i) {
-                        row.append('<th width="33%">' + dcs[i] + '</th>');
+                        row.append('<th class="arch-table-th-td">' +
+                                   dcs[i] + '</th>');
                 }
                 table.append(row);
 
@@ -225,13 +247,25 @@
 
         function scheduleRefresh() {
                 var self = this;
-                refresh.call(self, function () {
-                        //TODO: Could make refresh time configurable.  It really
-                        // doesn't make a difference if it's less than the
-                        // time the health checker runs.
-                        //TODO: reenable
-                        //setTimeout(scheduleRefresh.bind(self), 10000);
-                });
+
+                var seconds = REFRESH_PERIOD / 1000;
+                //Cheating here...
+                var secondsSinceUpdate = seconds;
+                function tryRefresh() {
+                        ++secondsSinceUpdate;
+                        if (secondsSinceUpdate < seconds) {
+                                updateClock.call(self,
+                                                 seconds - secondsSinceUpdate);
+                                setTimeout(tryRefresh, 1000);
+                                return;
+                        }
+                        refresh.call(self, function () {
+                                secondsSinceUpdate = 0;
+                                updateClock.call(self, seconds);
+                                setTimeout(tryRefresh, 1000);
+                        });
+                }
+                tryRefresh();
         }
 
         //--- "Main"
@@ -239,8 +273,17 @@
                 return this.filter('div').each(function() {
                         var self = this;
                         //Set up the bare-necessities, an outer shell...
-                        $(self).append('<div id="waiting"></div>')
-                                .append('<div id="error"></div>')
+                        $(self).append('<div id="status">' +
+                                         '<table class="status-table"><tr>' +
+                                           '<td class="status-left">' +
+                                             '<div id="waiting"></div>' +
+                                             '<div id="error"></div>' +
+                                           '</td>' +
+                                           '<td class="status-right">' +
+                                             '<div id="clock">' +
+                                           '</td>' +
+                                         '</table>' +
+                                       '</div>')
                                 .append('<div id="hosts"></div>');
                         scheduleRefresh.call(self);
                 });
