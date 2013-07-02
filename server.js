@@ -8,17 +8,6 @@ var url = require('url');
 var util = require('util');
 var vasync = require('vasync');
 
-//Health Check
-var Checker = require('./lib/health_checker');
-var DnsChecker = require('./lib/checkers/dns_checker');
-var HttpChecker = require('./lib/checkers/http_checker');
-var MorayChecker = require('./lib/checkers/moray_checker');
-var NoopChecker = require('./lib/checkers/noop_checker');
-var PostgresChecker = require('./lib/checkers/postgres_checker');
-var RedisChecker = require('./lib/checkers/redis_checker');
-var TcpChecker = require('./lib/checkers/tcp_checker');
-var ZookeeperChecker = require('./lib/checkers/zookeeper_checker');
-
 
 
 //--- Globals
@@ -46,10 +35,6 @@ var SIGN = manta.privateKeySigner({
         log: LOG,
         user: MANTA_USER
 });
-
-var CHECKER_CONFIG_FILE = process.env.CHECKER_CONFIG_FILE;
-var CHECKER_HOSTS_FILE = process.env.CHECKER_HOSTS_FILE;
-var CHECKER = null;
 
 //And even after all ^^, we still need a manta client.  We read from the
 // file again so that we can delete ^^ once MANTA-564 is done.
@@ -288,21 +273,6 @@ function handleDeleteRequest(req, res) {
 }
 
 
-function handleCheckerRequest(req, res) {
-        if (!CHECKER) {
-                res.send(JSON.stringify({
-                        'code': 'CheckerNoeConfigured',
-                        'message': 'The health checker is not configured on ' +
-                                'this server.'
-                }));
-                return;
-        }
-
-        var stats = JSON.stringify(CHECKER.getStats());
-        res.send(stats);
-}
-
-
 function handlePingRequest(req, res) {
         res.send('Ok.');
 }
@@ -332,68 +302,6 @@ function audit(req, res, next) {
 }
 
 
-function registerCheckers(checker, cb) {
-        if (!checker) {
-                cb();
-                return;
-        }
-        vasync.pipeline({
-                'funcs': [
-                        function loadDnsChecker(_, subcb) {
-                                CHECKER.registerChecker({
-                                        'label': 'dns',
-                                        'checker': DnsChecker
-                                }, subcb);
-                        },
-                        function loadHttpChecker(_, subcb) {
-                                CHECKER.registerChecker({
-                                        'label': 'http',
-                                        'checker': HttpChecker
-                                }, subcb);
-                        },
-                        function loadMorayChecker(_, subcb) {
-                                CHECKER.registerChecker({
-                                        'label': 'moray',
-                                        'checker': MorayChecker
-                                }, subcb);
-                        },
-                        function loadNoopChecker(_, subcb) {
-                                CHECKER.registerChecker({
-                                        'label': 'noop',
-                                        'checker': NoopChecker
-                                }, subcb);
-                        },
-                        function loadPostgresChecker(_, subcb) {
-                                CHECKER.registerChecker({
-                                        'label': 'postgres',
-                                        'checker': PostgresChecker
-                                }, subcb);
-                        },
-                        function loadRedisChecker(_, subcb) {
-                                CHECKER.registerChecker({
-                                        'label': 'redis',
-                                        'checker': RedisChecker
-                                }, subcb);
-                        },
-                        function loadTcpChecker(_, subcb) {
-                                CHECKER.registerChecker({
-                                        'label': 'tcp',
-                                        'checker': TcpChecker
-                                }, subcb);
-                        },
-                        function loadZookeeperChecker(_, subcb) {
-                                CHECKER.registerChecker({
-                                        'label': 'zookeeper',
-                                        'checker': ZookeeperChecker
-                                }, subcb);
-                        }
-                ]
-        }, function (err) {
-                cb(err);
-        });
-}
-
-
 
 //--- Main
 
@@ -411,7 +319,6 @@ app.get('/config', handleConfigRequest);
 app.get('/sign/*', handleSignRequest);
 app.post('/save/*', handleSaveRequest);
 app.post('/delete/*', handleDeleteRequest);
-app.get('/checker', handleCheckerRequest);
 app.get('/ping', handlePingRequest);
 
 //Route everything else to the static directory.
@@ -420,60 +327,6 @@ app.use(express.static(__dirname + '/static'));
 // Start the checker, then the server
 vasync.pipeline({
         'funcs': [
-                function initChecker(_, subcb) {
-                        if (!CHECKER_CONFIG_FILE && !CHECKER_HOSTS_FILE) {
-                                LOG.info({
-                                        checkerConfigFile: CHECKER_CONFIG_FILE,
-                                        checkerHostsFile: CHECKER_HOSTS_FILE
-                                }, 'env vars not specified, not starting ' +
-                                         'checker.');
-                                subcb();
-                                return;
-                        }
-                        LOG.info({
-                                checkerConfigFile: CHECKER_CONFIG_FILE,
-                                checkerHostsFile: CHECKER_HOSTS_FILE
-                        }, 'env vars for checker.');
-                        var cfg;
-                        var hosts;
-                        try {
-                                cfg = JSON.parse(fs.readFileSync(
-                                        CHECKER_CONFIG_FILE));
-                                hosts = JSON.parse(fs.readFileSync(
-                                        CHECKER_HOSTS_FILE));
-                        } catch (err) {
-                                subcb(err);
-                                return;
-                        }
-                        CHECKER = new Checker({ log: LOG });
-                        //Kinda hacky...
-                        CHECKER._loadedCfg = cfg;
-                        CHECKER._loadedHostsCfg = hosts;
-                        registerCheckers(CHECKER, subcb);
-                },
-                function registerCheckerCfg(_, subcb) {
-                        if (!CHECKER) {
-                                subcb();
-                                return;
-                        }
-                        CHECKER.registerFromConfig(CHECKER._loadedCfg, subcb);
-                },
-                function registerCheckerHostCfg(_, subcb) {
-                        if (!CHECKER) {
-                                subcb();
-                                return;
-                        }
-                        CHECKER.registerFromConfig(CHECKER._loadedHostsCfg,
-                                                   subcb);
-                },
-                function startChecker(_, subcb) {
-                        if (!CHECKER) {
-                                subcb();
-                                return;
-                        }
-                        LOG.info('starting checker...');
-                        CHECKER.start(subcb);
-                },
                 function startServer(_, subcb) {
                         LOG.info({ port: port }, 'Starting server...');
                         app.listen(port);
