@@ -1,6 +1,7 @@
 {
   "past_hours_to_scan": 3,
   "services": {
+    "madtom": [ "latency", "processType:stats.lastLatency" ],
     "mako-gc": [ "fileCount", "objectCount", "cronExec", "processed",
                  "alreadyDeleted", "error" ],
     "manowar": [ "latency", "statusCode:latency" ],
