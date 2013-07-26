@@ -405,6 +405,12 @@ function makeServiceJob(opts, cb) {
                         return;
                 }
 
+                //If no objects, don't start a job...
+                if (objs.length < 1) {
+                        cb();
+                        return;
+                }
+
                 //Set up additional opts arguments...
                 opts.recordPath = MANOWAR_PROCESSED_DIR + '/' + service +
                         hourPath;
