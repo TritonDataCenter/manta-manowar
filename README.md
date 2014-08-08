@@ -7,6 +7,10 @@ Docs: <https://mo.joyent.com/docs/manowar>
 Tickets/bugs: <https://devhub.joyent.com/jira/browse/MANTA>
 
 
+# !!!!Deprecated!!!!
+
+Man O' War is deprecated.
+
 # Overview
 
 Man O' War is the ops dashboard repository.  It contains the server for
