@@ -8,16 +8,13 @@
     Copyright (c) 2014, Joyent, Inc.
 -->
 
-# Man O' War
-
-Repository: <git@git.joyent.com:manowar.git>
-Browsing: <https://mo.joyent.com/manowar>
-Who: Nate Fitch
-Docs: <https://mo.joyent.com/docs/manowar>
-Tickets/bugs: <https://devhub.joyent.com/jira/browse/MANTA>
-
-
 # !!!!Deprecated!!!!
+
+# manta-manowar
+
+This repository is part of the Joyent Manta project.  For contribution
+guidelines, issues, and general documentation, visit the main
+[Manta](http://github.com/joyent/manta) project page.
 
 Man O' War is deprecated.
 
